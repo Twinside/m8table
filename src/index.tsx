@@ -1,3 +1,4 @@
+import { M8Controller, M8GlobalCommand, M8SequencerCommand } from "./m8io";
 import "./style.css";
 import { JSX, render } from "preact";
 
@@ -89,23 +90,15 @@ async function sendSequence(midi : MIDIAccess | undefined) {
 		return;
 	}
 
-	console.log('Opening');
-	const noteOnMessage = [0x99, 7, 1];
-	const noteOffMessage = [0x89, 7, 0];
-
 	await m8Port.open();
 
-	m8Port.send(noteOnMessage);
-	setTimeout(() => {
-		
-		m8Port.send(noteOffMessage);
-
-		setTimeout(() =>
-		{
-			m8Port.close();
-			console.log('DONE');
-		}, 40);
-	}, 40);
+	const m8 = new M8Controller(10);
+	m8.sendCommands(m8Port,[
+		{ ty:"GLO", code: M8GlobalCommand.CUT, value: 30 },
+		{ ty:"GLO", code: M8GlobalCommand.CUT, value: 0xFF },
+		{ ty:"SEQ", code: M8SequencerCommand.REP, value: 4 },
+		{ ty:"SEQ", code: M8SequencerCommand.HOP, value: 3 },
+	]);
 }
 
 export function App() {

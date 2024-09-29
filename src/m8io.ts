@@ -121,13 +121,13 @@ const M8GlobalCommandPositions : { [ix in M8GlobalCommand]: Pos } = {
 } as const;
 
 export type M8Command =
-	| { ty: "SEQ", code: M8SequencerCommand }
-	| { ty: "GLO", code: M8GlobalCommand }
-	| { ty: "WAV", code: M8WaveSynthCommand }
-	| { ty: "FM", code: M8FMSynthCommand }
-	| { ty: "MA", code: M8MacroSynthCommand }
-	| { ty: "HS", code: M8HyperSynthCommand }
-	| { ty: "SA", code: M8SamplerCommand }
+	| { ty: "SEQ", code: M8SequencerCommand, value: number }
+	| { ty: "GLO", code: M8GlobalCommand, value: number }
+	| { ty: "WAV", code: M8WaveSynthCommand, value: number }
+	| { ty: "FM", code: M8FMSynthCommand, value: number }
+	| { ty: "MA", code: M8MacroSynthCommand, value: number }
+	| { ty: "HS", code: M8HyperSynthCommand, value: number }
+	| { ty: "SA", code: M8SamplerCommand, value: number }
 
 function never(_: never) : never {
 	throw 'never';
@@ -149,6 +149,104 @@ export function PositionOfCommand(cmd: M8Command) : Pos {
 	}
 }
 
+/** Put the cursor on the top left position  */
+function* resetCommandView() : Iterable<M8UserCommand> {
+    for (let i = 0; i < 7; i++) {
+        yield M8UserCommand.Left; // on
+        yield M8UserCommand.Left; // off
+    }
+
+    for (let i = 0; i < 15; i++) {
+        yield M8UserCommand.Up; // on
+        yield M8UserCommand.Up; // off
+    }
+}
+
+/** Given a value between zero and 0xFF, create a sequence
+ * of edit commands that can be used to write a value.
+ */
+function* setValue(v : number) : Iterable<M8UserCommand> {
+    // reset value to zero
+    yield M8UserCommand.Edit;
+    yield M8UserCommand.Option;
+
+    yield M8UserCommand.Edit;
+    yield M8UserCommand.Option;
+
+
+    yield M8UserCommand.Edit;
+
+    const bigStepCount = ((v / 16) | 0) * 2;
+    for (let i = 0; i < bigStepCount; i++) {
+        yield M8UserCommand.Up;
+    }
+
+    const smallStepCount = (v & 0xF) * 2;
+    for (let i = 0; i < smallStepCount; i++) {
+        yield M8UserCommand.Right;
+    }
+
+    yield M8UserCommand.Edit;
+}
+
+
+/** Transform a script to edit command list, ready to be sent to the M8
+ * via MIDI.
+ */
+function* CommandToWriteOrders(commands: Iterable<M8Command>) : Iterable<M8UserCommand> {
+    const currentPos : Pos = { x: 0, y: 0 };
+    let isFirst = true;
+
+    for (const cmd of commands) {
+        const toPos = PositionOfCommand(cmd);
+
+        const dx = toPos.x - currentPos.x;
+        const dy = toPos.y - currentPos.y;
+
+        const hDir = dx < 0 ? M8UserCommand.Left : M8UserCommand.Right;
+        const vDir = dy < 0 ? M8UserCommand.Up : M8UserCommand.Down;
+
+        yield M8UserCommand.Edit;
+        yield M8UserCommand.Up; // on
+        yield M8UserCommand.Up; // off
+
+        if (isFirst) {
+            yield* resetCommandView();
+            isFirst = false;
+        }
+
+        // repeat left once for left, once for right
+        const repX = Math.abs(dx);
+        for (let x = 0; x < 2 * repX; x++) {
+            yield hDir;
+        }
+
+        const repY = Math.abs(dy);
+        for (let y = 0; y < 2 * repY; y++) {
+            yield vDir;
+        }
+
+        yield M8UserCommand.Edit; // off
+
+        yield M8UserCommand.Right; //on
+        yield M8UserCommand.Right; //off
+
+        yield* setValue(cmd.value);
+
+        yield M8UserCommand.Left; //on
+        yield M8UserCommand.Left; //off
+
+        yield M8UserCommand.Down; //on
+        yield M8UserCommand.Down; //off
+
+        currentPos.x = toPos.x;
+        currentPos.y = toPos.y;
+    }
+}
+
+/** Position of the command in the edit menu, in order
+ * to be able to write it easily.
+ */
 export type Pos = { x: number, y: number }
 
 export enum M8UserCommand {
@@ -164,30 +262,6 @@ export enum M8UserCommand {
 
 /** Class in charge of formatting various m8 commands and sending them off properly */
 export class M8Controller {
-	public readonly PlayOn : number[];
-	public readonly PlayOff : number[];
-
-	public readonly ShiftOn : number[];
-	public readonly ShiftOff : number[];
-
-	public readonly EditOn : number[];
-	public readonly EditOff : number[];
-
-	public readonly OptionOn : number[];
-	public readonly OptionOff : number[];
-
-	public readonly LeftOn : number[];
-	public readonly LeftOff : number[];
-
-	public readonly RightOn : number[];
-	public readonly RightOff : number[];
-
-	public readonly UpOn : number[];
-	public readonly UpOff : number[];
-
-	public readonly DownOn : number[];
-	public readonly DownOff : number[];
-
 	private readonly NoteOns : number[][];
 	private readonly NoteOffs : number[][];
 
@@ -208,30 +282,35 @@ export class M8Controller {
 		];
 
 		this.NoteOns = [
-			this.PlayOn = Midi.NoteOn(controlChannel, 0, 1),
-			this.ShiftOn = Midi.NoteOn(controlChannel, 1, 1),
-			this.EditOn = Midi.NoteOn(controlChannel, 2, 1),
-			this.OptionOn = Midi.NoteOn(controlChannel, 3, 1),
-			this.LeftOn = Midi.NoteOn(controlChannel, 4, 1),
-			this.RightOn = Midi.NoteOn(controlChannel, 5, 1),
-			this.UpOn = Midi.NoteOn(controlChannel, 6, 1),
-			this.DownOn = Midi.NoteOn(controlChannel, 7, 1)
+			Midi.NoteOn(controlChannel, 0, 1),
+			Midi.NoteOn(controlChannel, 1, 1),
+			Midi.NoteOn(controlChannel, 2, 1),
+			Midi.NoteOn(controlChannel, 3, 1),
+			Midi.NoteOn(controlChannel, 4, 1),
+			Midi.NoteOn(controlChannel, 5, 1),
+			Midi.NoteOn(controlChannel, 6, 1),
+			Midi.NoteOn(controlChannel, 7, 1)
 		];
 
 		this.NoteOffs = [
-			this.PlayOff = Midi.NoteOff(controlChannel, 0, 1),
-			this.ShiftOff = Midi.NoteOff(controlChannel, 1, 1),
-			this.EditOff = Midi.NoteOff(controlChannel, 2, 1),
-			this.OptionOff = Midi.NoteOff(controlChannel, 3, 1),
-			this.LeftOff = Midi.NoteOff(controlChannel, 4, 1),
-			this.RightOff = Midi.NoteOff(controlChannel, 5, 1),
-			this.UpOff = Midi.NoteOff(controlChannel, 6, 1),
-			this.DownOff = Midi.NoteOff(controlChannel, 7, 1)
+			Midi.NoteOff(controlChannel, 0, 0),
+			Midi.NoteOff(controlChannel, 1, 0),
+			Midi.NoteOff(controlChannel, 2, 0),
+			Midi.NoteOff(controlChannel, 3, 0),
+			Midi.NoteOff(controlChannel, 4, 0),
+			Midi.NoteOff(controlChannel, 5, 0),
+			Midi.NoteOff(controlChannel, 6, 0),
+			Midi.NoteOff(controlChannel, 7, 0)
 		];
 	}
 
-	public sendCommands(out: MIDIOutput, commands: Iterable<M8UserCommand>) {
+    public sendCommands(out: MIDIOutput, commands: Iterable<M8Command>) {
+        this.sendUserCommands(out, CommandToWriteOrders(commands));
+    }
+
+	public sendUserCommands(out: MIDIOutput, commands: Iterable<M8UserCommand>) {
 		let i = 0;
+        const timeBetweenNotes = 15; // ms
 
 		for (const command of commands) {
 			const status = this.keyStates[command];
@@ -241,7 +320,7 @@ export class M8Controller {
 				: this.NoteOns;
 
 			this.keyStates[command] = !status;
-			out.send(mapping[command], window.performance.now() + i * 40.0);
+			out.send(mapping[command], window.performance.now() + i * timeBetweenNotes);
 			i++;
 		}
 	}
