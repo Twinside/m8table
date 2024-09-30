@@ -1,4 +1,5 @@
 
+/** Really light midi message formatter. */
 export class Midi {
 	public static readonly NoteOnCode : number = 0x90;
 	public static readonly NoteOffCode : number = 0x80;

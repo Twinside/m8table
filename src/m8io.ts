@@ -1,5 +1,7 @@
 import { Midi } from "./midi";
+import { never } from "./model";
 
+/** Sequencer command */
 export enum M8SequencerCommand {
 	DEL = "DEL",
 	HOP = "HOP",
@@ -9,6 +11,7 @@ export enum M8SequencerCommand {
 	TIC = "TIC"
 }
 
+/** Global instrument command shared between instruments */
 export enum M8GlobalCommand {
 	VOL = "VOL",
 	PIT = "PIT",
@@ -23,6 +26,7 @@ export enum M8GlobalCommand {
 	SRV = "SRV",
 }
 
+/** Wavesynth specific commands */
 export enum M8WaveSynthCommand {
 	SIZ = "SIZ",
 	MUL = "MUL",
@@ -30,6 +34,7 @@ export enum M8WaveSynthCommand {
 	WRP = "WRP"
 }
 
+/** FM specific comments */
 export enum M8FMSynthCommand {
 	FM1 = "FM1",
 	FM2 = "FM2",
@@ -128,10 +133,6 @@ export type M8Command =
 	| { ty: "MA", code: M8MacroSynthCommand, value: number }
 	| { ty: "HS", code: M8HyperSynthCommand, value: number }
 	| { ty: "SA", code: M8SamplerCommand, value: number }
-
-function never(_: never) : never {
-	throw 'never';
-}
 
 export function PositionOfCommand(cmd: M8Command) : Pos {
 	const ty = cmd.ty;

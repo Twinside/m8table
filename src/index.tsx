@@ -1,6 +1,8 @@
 import { M8Controller, M8GlobalCommand, M8SequencerCommand } from "./m8io";
+import { AttackDecayEnvMacro, createState, initialState, never, reducer, TriLFOEnvMacro } from "./model";
 import "./style.css";
 import { JSX, render } from "preact";
+import { useReducer } from "preact/hooks";
 
 let midi : MIDIAccess | undefined = undefined;
 
@@ -11,33 +13,6 @@ function onMIDIFailure(msg : any) {
       Midi rejected :(
     </div>
   `
-}
-
-function MidiInputs(props: { midi: MIDIAccess | undefined }) {
-	const { midi } = props;
-	if (midi === undefined)
-		return <div>No midi!</div>;
-
-	const out : JSX.Element[] = []
-
-	for (const entry of midi.inputs) {
-		const input = entry[1];
-		out.push(
-			<div>
-				Input port [type: {input.type}]`
-				<ul>
-					<li>id: {input.id}</li>
-					<li>manufacturer: {input.manufacturer}</li>
-					<li>name: {input.name}</li>
-					<li>{input.version}</li>
-				</ul>
-			</div>
-		);
-	}
-
-	return out.length > 0
-		? <div>{out}</div>
-		: <div>No midi input found</div>;
 }
 
 function MidiOutputs(props : {midi: MIDIAccess | undefined }){
@@ -54,9 +29,7 @@ function MidiOutputs(props : {midi: MIDIAccess | undefined }){
 				Output port [type:'{output.type}']
 				<ul>
 					<li>id:'{output.id}'</li>
-					<li>manufacturer:'{output.manufacturer}'</li>
 					<li>name:'{output.name}'</li>
-					<li>version:'{output.version}'</li>
 				</ul>
 
 			</div>
@@ -101,12 +74,58 @@ async function sendSequence(midi : MIDIAccess | undefined) {
 	]);
 }
 
+const state = createState();
+
+function RangeVal(props: { name: string, val: number }) {
+	const onChange = (a) => {};
+
+	return <>
+		<label>{props.name}</label>
+		<input
+			type="range" min="0" max="255"
+			onInput={(evt) => onChange(evt.currentTarget.value)}
+			value={props.val}/>
+		<input
+			type="number" min="0" max="255"
+			onInput={(evt) => onChange(evt.currentTarget.value)}
+			value={props.val} />
+	</>;
+}
+
+function AdEnvEditor(props: { def: AttackDecayEnvMacro }) {
+	return <></>;
+}
+
+function TriLfoEditor(props: { def: TriLFOEnvMacro }) {
+	return <form>
+	</form>;
+}
+
+function MacroEditor() {
+	const macroEditor = state.current_macro.value;
+
+	if (macroEditor === undefined) return <></>;
+
+	const kind = macroEditor.kind;
+	switch (kind)
+	{
+		case "ad_env":
+			return <AdEnvEditor def={macroEditor.def} />;
+		case "tri_lfo":
+			return <TriLfoEditor def={macroEditor.def} />;
+		case "free":
+			return <></>;
+		default:
+			never(kind);
+	}
+}
+
 export function App() {
 	return <>
-		<h2>MIDI inputs</h2>
-		<MidiInputs midi={midi} />
-		<h2>MIDI outputs</h2>
-		<MidiOutputs midi={midi} />
+		<div>
+			<h2>MIDI outputs</h2>
+			<MidiOutputs midi={midi} />
+		</div>
 		<button onClick={_ => sendSequence(midi)}>Test</button>
 	</>;
 }
