@@ -65,67 +65,78 @@ export enum M8SamplerCommand {
 	SLI = "SLI"
 }
 
-type Rel = { relative: boolean };
+type Rel = { relative: boolean, cmd: M8Command };
 
 // TODO: check all relatives!
 const M8WaveSynthCommandPositions : { [ix in M8WaveSynthCommand] : Pos & Rel } = {
-	SIZ: { x: 4, y: 4, relative: true },
-	MUL: { x: 5, y: 4, relative: true  },
-	WRP: { x: 6, y: 4, relative: true  },
-	SCN: { x: 7, y: 4, relative: true  },
+    SIZ: { x: 4, y: 4, relative: true, cmd: { ty: "WAV", code: M8WaveSynthCommand.SIZ, value: 0 } },
+	MUL: { x: 5, y: 4, relative: true, cmd: { ty: "WAV", code: M8WaveSynthCommand.MUL, value: 0 } },
+	WRP: { x: 6, y: 4, relative: true, cmd: { ty: "WAV", code: M8WaveSynthCommand.WRP, value: 0 } },
+	SCN: { x: 7, y: 4, relative: true, cmd: { ty: "WAV", code: M8WaveSynthCommand.SCN, value: 0 } },
 }
 
 const M8FMSynthCommandPositions : { [ix in M8FMSynthCommand] : Pos & Rel } = {
-	FM1: { x: 4, y: 4, relative: true  },
-	FM2: { x: 5, y: 4, relative: true  },
-	FM3: { x: 6, y: 4, relative: true  },
-	FM4: { x: 7, y: 4, relative: true  },
+	FM1: { x: 4, y: 4, relative: true, cmd: { ty: "FM", code: M8FMSynthCommand.FM1, value: 0 } },
+	FM2: { x: 5, y: 4, relative: true, cmd: { ty: "FM", code: M8FMSynthCommand.FM2, value: 0 } },
+	FM3: { x: 6, y: 4, relative: true, cmd: { ty: "FM", code: M8FMSynthCommand.FM3, value: 0 } },
+	FM4: { x: 7, y: 4, relative: true, cmd: { ty: "FM", code: M8FMSynthCommand.FM4, value: 0 } },
 };
 
 const M8HyperSynthCommandPositions : { [ix in M8HyperSynthCommand] : Pos & Rel } = {
-	SHF: { x: 4, y: 4, relative: true  },
-	SWM: { x: 5, y: 4, relative: true  },
-	WID: { x: 6, y: 4, relative: true },
-	SUB: { x: 7, y: 4, relative: true  },
+	SHF: { x: 4, y: 4, relative: true, cmd: { ty: "HS", code: M8HyperSynthCommand.SHF, value: 0 } },
+	SWM: { x: 5, y: 4, relative: true, cmd: { ty: "HS", code: M8HyperSynthCommand.SWM, value: 0 }  },
+	WID: { x: 6, y: 4, relative: true, cmd: { ty: "HS", code: M8HyperSynthCommand.WID, value: 0 } },
+	SUB: { x: 7, y: 4, relative: true, cmd: { ty: "HS", code: M8HyperSynthCommand.SUB, value: 0 }  },
 };
 
 const M8SamplerSynthCommandPositions : { [ix in M8SamplerCommand] : Pos & Rel } = {
-	PLY: { x: 3, y: 4, relative: false },
-	STA: { x: 4, y: 4, relative: false },
-	LOP: { x: 5, y: 4, relative: false },
-	LEN: { x: 6, y: 4, relative: false },
-	DEG: { x: 7, y: 4, relative: false },
-	SLI: { x: 6, y: 5, relative: false },
+	PLY: { x: 3, y: 4, relative: false, cmd: { ty: "SA", code: M8SamplerCommand.PLY, value: 0 } },
+	STA: { x: 4, y: 4, relative: false, cmd: { ty: "SA", code: M8SamplerCommand.STA, value: 0 } },
+	LOP: { x: 5, y: 4, relative: false, cmd: { ty: "SA", code: M8SamplerCommand.LOP, value: 0 } },
+	LEN: { x: 6, y: 4, relative: false, cmd: { ty: "SA", code: M8SamplerCommand.LEN, value: 0 } },
+	DEG: { x: 7, y: 4, relative: false, cmd: { ty: "SA", code: M8SamplerCommand.DEG, value: 0 } },
+	SLI: { x: 6, y: 5, relative: false, cmd: { ty: "SA", code: M8SamplerCommand.SLI, value: 0 } },
 };
 
 const M8MacroSynthCommandPositions : { [ix in M8MacroSynthCommand] : Pos & Rel } = {
-	TBR: { x: 4, y: 4, relative: true },
-	COL: { x: 5, y: 4, relative: true },
-	DEG: { x: 6, y: 4, relative: true  },
-	RED: { x: 7, y: 4, relative: true  },
+	TBR: { x: 4, y: 4, relative: true, cmd: { ty: "MA", code: M8MacroSynthCommand.TBR, value: 0 } },
+	COL: { x: 5, y: 4, relative: true, cmd: { ty: "MA", code: M8MacroSynthCommand.COL, value: 0 } },
+	DEG: { x: 6, y: 4, relative: true, cmd: { ty: "MA", code: M8MacroSynthCommand.DEG, value: 0 } },
+	RED: { x: 7, y: 4, relative: true, cmd: { ty: "MA", code: M8MacroSynthCommand.RED, value: 0 } },
 };
 
 const M8SequencerCommandPositions : { [ix in M8SequencerCommand] : Pos & Rel} = {
-	DEL: { x: 3, y: 0, relative: false },
-	HOP: { x: 5, y: 0, relative: false },
-	RET: { x: 0, y: 1, relative: false },
-	REP: { x: 1, y: 1, relative: false },
-	RTO: { x: 2, y: 1, relative: false },
-	TIC: { x: 6, y: 2, relative: false }
+	DEL: { x: 3, y: 0, relative: false, cmd: { ty: "SEQ", code: M8SequencerCommand.DEL, value: 0 } },
+	HOP: { x: 5, y: 0, relative: false, cmd: { ty: "SEQ", code: M8SequencerCommand.HOP, value: 0 } },
+	RET: { x: 0, y: 1, relative: false, cmd: { ty: "SEQ", code: M8SequencerCommand.RET, value: 0 } },
+	REP: { x: 1, y: 1, relative: false, cmd: { ty: "SEQ", code: M8SequencerCommand.REP, value: 0 } },
+	RTO: { x: 2, y: 1, relative: false, cmd: { ty: "SEQ", code: M8SequencerCommand.RTO, value: 0 } },
+	TIC: { x: 6, y: 2, relative: false, cmd: { ty: "SEQ", code: M8SequencerCommand.TIC, value: 0 } }
 } as const;
 
 const M8GlobalCommandPositions : { [ix in M8GlobalCommand]: Pos & Rel } = {
-	VOL: { x: 0, y: 4, relative: true },
-	PIT: { x: 1, y: 4, relative: true },
-	FIN: { x: 2, y: 4, relative: true },
-	CUT: { x: 1, y: 5, relative: true },
-	RES: { x: 2, y: 5, relative: true },
-	AMP: { x: 3, y: 5, relative: true },
-	PAN: { x: 5, y: 5, relative: true },
-	DRY: { x: 0, y: 6, relative: false },
-	SCH: { x: 1, y: 6, relative: false },
-	SDL: { x: 2, y: 6, relative: false },
-	SRV: { x: 3, y: 6, relative: false },
+	VOL: { x: 0, y: 4, relative: true, cmd: { ty: "GLO", code: M8GlobalCommand.VOL, value: 0 } },
+	PIT: { x: 1, y: 4, relative: true, cmd: { ty: "GLO", code: M8GlobalCommand.PIT, value: 0 } },
+	FIN: { x: 2, y: 4, relative: true, cmd: { ty: "GLO", code: M8GlobalCommand.FIN, value: 0 } },
+	CUT: { x: 1, y: 5, relative: true, cmd: { ty: "GLO", code: M8GlobalCommand.CUT, value: 0 } },
+	RES: { x: 2, y: 5, relative: true, cmd: { ty: "GLO", code: M8GlobalCommand.RES, value: 0 } },
+	AMP: { x: 3, y: 5, relative: true, cmd: { ty: "GLO", code: M8GlobalCommand.AMP, value: 0 } },
+	PAN: { x: 5, y: 5, relative: true, cmd: { ty: "GLO", code: M8GlobalCommand.PAN, value: 0 } },
+	DRY: { x: 0, y: 6, relative: false, cmd: { ty: "GLO", code: M8GlobalCommand.DRY, value: 0 } },
+	SCH: { x: 1, y: 6, relative: false, cmd: { ty: "GLO", code: M8GlobalCommand.SCH, value: 0 } },
+	SDL: { x: 2, y: 6, relative: false, cmd: { ty: "GLO", code: M8GlobalCommand.SDL, value: 0 } },
+	SRV: { x: 3, y: 6, relative: false, cmd: { ty: "GLO", code: M8GlobalCommand.SRV, value: 0 } },
+} as const;
+
+export type M8Instrument =
+	"WAV" | "FM" | "MA" | "HS" | "SA"
+
+export const HumanNameOfInstrument : { [ix in M8Instrument]: string } = {
+	"WAV": "Wavsynth",
+	"MA": "Macrosynth",
+	"HS": "Hypersynth",
+	"SA": "Sampler",
+	"FM": "FM Synth"
 } as const;
 
 export type M8Command =
@@ -149,6 +160,20 @@ export class M8Builder {
 	public static CUT(v: number) : M8Command {
 		return { ty: "GLO", code: M8GlobalCommand.CUT, value: v };
 	}
+}
+
+function* mk(dic: { [ix: T]: Rel }) {
+	for (let k in dic) {
+		yield dic[k].cmd;
+	}
+}
+
+export const CommandsOfInstrument : { [ix in M8Instrument]: M8Command[] } = {
+	"WAV": [...mk(M8WaveSynthCommand), ...mk(M8GlobalCommand)],
+	"FM": [...mk(M8FMSynthCommand), ...mk(M8GlobalCommand)],
+	"MA": [...mk(M8MacroSynthCommand), ...mk(M8GlobalCommand)],
+	"HS": [...mk(M8HyperSynthCommand), ...mk(M8GlobalCommand)],
+	"SA": [...mk(M8SamplerCommand), ...mk(M8GlobalCommand)],
 }
 
 export function Plot(ctx: CanvasRenderingContext2D, commands: M8Command[]) {

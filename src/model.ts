@@ -1,5 +1,5 @@
 import { computed, ReadonlySignal, Signal, signal } from "@preact/signals";
-import { IsFunctionRelative, M8Builder, M8Command } from "./m8io";
+import { IsFunctionRelative, M8Builder, M8Command, M8Instrument } from "./m8io";
 
 /** Main definition of what we're trying to represent */
 export type Segment =
@@ -116,6 +116,7 @@ export function FreshMacro(ix: number) : SegmentMacro {
 
 export type State =
     {
+        current_instrument: Signal<M8Instrument>,
         current_parameter: Signal<M8Command>,
         current_macro: Signal<SegmentMacro>,
         current_segments: Signal<Segment[]>,
@@ -130,6 +131,7 @@ export const createState : () => State = () =>
         [... RenderMacro(current_parameter.value, current_macro.value)]);
 
     return {
+        current_instrument: signal("MA"),
         current_parameter,
         current_segments: signal([]),
         current_macro,

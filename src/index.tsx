@@ -1,4 +1,4 @@
-import { M8Command, M8Controller, Plot } from "./m8io";
+import { HumanNameOfInstrument, M8Command, M8Controller, M8Instrument, Plot } from "./m8io";
 import { AttackDecayEnvMacro, createState, FreshMacro, never, SegmentKindIndex, TriLFOEnvMacro } from "./model";
 import "./style.css";
 import { JSX, render } from "preact";
@@ -198,19 +198,54 @@ function ScriptPlot() {
     return <canvas ref={canvasRef} width={512} height={256}/>;
 }
 
-export function App() {
-	return <div class="rootcontainer">
-		<div class="rootcolumn">
+function InstrumentChoice() {
+	const instrument = state.current_instrument.value;
+	const mkRadio = (m8i : M8Instrument) =>
+		<div>
+			<label>
+				<input type="radio" value={m8i}
+					   checked={m8i === instrument}
+					   onInput={_ => state.current_instrument.value = m8i}/>{HumanNameOfInstrument[m8i]}
+			</label>
+		</div>;
+
+	return <div>
+		{mkRadio("WAV")}
+		{mkRadio("MA")}
+		{mkRadio("HS")}
+		{mkRadio("SA")}
+		{mkRadio("FM")}
+	</div>
+}
+
+function ValueChoice() {
+	const instrument = state.current_instrument.value;
+
+	return <select>
+
+	</select>;
+}
+
+/*
 			<div>
 				<h2>MIDI outputs</h2>
 				<MidiOutputs midi={midi} />
 			</div>
+			// */
+export function App() {
+	return <div class="rootcontainer">
+		<div class="rootcolumn">
+			<h3>Generator</h3>
 			<MacroChoice />
+			<h3>Instrument</h3>
+			<InstrumentChoice />
+			<h3>Value</h3>
 		</div>
 		<div class="rootcolumn">
 			<MacroEditor />
 		</div>
 		<div class="rootcolumn">
+			<h3>M8 'script'</h3>
 			<ScriptRender />
 			<ScriptPlot />
 
