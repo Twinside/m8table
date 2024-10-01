@@ -1,19 +1,9 @@
-import { HumanNameOfInstrument, M8Command, M8Controller, M8Instrument, Plot } from "./m8io";
-import { AttackDecayEnvMacro, createState, FreshMacro, never, SegmentKindIndex, TriLFOEnvMacro } from "./model";
+import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument, M8Command, M8Controller, M8Instrument, Plot } from "./m8io";
+import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro } from "./model";
+import { createState, never } from "./state";
 import "./style.css";
 import { JSX, render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-
-let midi : MIDIAccess | undefined = undefined;
-
-function onMIDIFailure(msg : any) {
-  console.error(`Failed to get MIDI access - ${msg}`);
-  document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-    <div>
-      Midi rejected :(
-    </div>
-  `
-}
 
 function MidiOutputs(props : {midi: MIDIAccess | undefined }){
 	const { midi } = props;
@@ -71,7 +61,7 @@ async function sendSequence(midi : MIDIAccess | undefined) {
 	m8.sendCommands(m8Port, state.script.peek());
 }
 
-const state = createState();
+let state = createState(undefined);
 
 function RangeVal(props: { name: string, val: number, update: (v: number) => void }) {
 	const onChange = (a : string) =>
@@ -81,7 +71,7 @@ function RangeVal(props: { name: string, val: number, update: (v: number) => voi
 	}
 
 	return <div class="valueEdit">
-		<label>{props.name}</label>
+		<label>{props.name}</label><br/>
 		<input
 			type="range" min="0" max="255"
 			onInput={(evt) => onChange(evt.currentTarget.value)}
@@ -93,19 +83,45 @@ function RangeVal(props: { name: string, val: number, update: (v: number) => voi
 	</div>;
 }
 
-function AdEnvEditor(props: { def: AttackDecayEnvMacro, update: (v: AttackDecayEnvMacro) => void  }) {
-	return <></>;
-}
-
-function TriLfoEditor(props: { def: TriLFOEnvMacro, update: (v: TriLFOEnvMacro) => void }) {
+function AttackDecayEnvEditor(props: { name: string, def: AttackDecayEnvMacro, update: (v: AttackDecayEnvMacro) => void  }) {
 	const def = props.def;
 	return <form>
-		<h3>Triangle LFO</h3>
-		<RangeVal name="Duration" val={def.Duration} update={(v) => props.update({...def, Duration: v})} />
+		<h3>{props.name}</h3>
+		<RangeVal name="Attack (tics)" val={def.AttackTics} update={(v) => props.update({...def, AttackTics: v})} />
+		<RangeVal name="Decay (tics)" val={def.DecayTics}  update={(v) => props.update({...def, DecayTics: v})} />
 		<RangeVal name="Amount" val={def.Amount}  update={(v) => props.update({...def, Amount: v})} />
 		<label>Loop</label>
 		<input type="checkbox" checked={def.Loop} 
-			onInput={(evt) => props.update({...def, Loop: !def.Loop})}/>
+			onInput={(_evt) => props.update({...def, Loop: !def.Loop})}/>
+	</form>;
+}
+
+function AdsrEnvEditor(props: { name: string, def: ADSREnvMacro, update: (v: ADSREnvMacro) => void  }) {
+	const def = props.def;
+	return <form>
+		<h3>{props.name}</h3>
+		<RangeVal name="Amount" val={def.Amount}  update={(v) => props.update({...def, Amount: v})} />
+
+		<RangeVal name="Attack (tics)" val={def.AttackTics} update={(v) => props.update({...def, AttackTics: v})} />
+		<RangeVal name="Decay (tics)" val={def.DecayTics}  update={(v) => props.update({...def, DecayTics: v})} />
+		<RangeVal name="Sustain (tics)" val={def.SustainTics}  update={(v) => props.update({...def, SustainTics: v})} />
+		<RangeVal name="Sustain Amount" val={def.SustainLevel}  update={(v) => props.update({...def, SustainLevel: v})} />
+		<RangeVal name="Release (tics)" val={def.ReleaseTics}  update={(v) => props.update({...def, ReleaseTics: v})} />
+		<label>Loop</label>
+		<input type="checkbox" checked={def.Loop} 
+			onInput={(_evt) => props.update({...def, Loop: !def.Loop})}/>
+	</form>;
+}
+
+function LfoEditor(props: { name: string, def: LFOEnvMacro, update: (v: LFOEnvMacro) => void }) {
+	const def = props.def;
+	return <form>
+		<h3>{props.name}</h3>
+		<RangeVal name="Duration (tics)" val={def.Duration} update={(v) => props.update({...def, Duration: v})} />
+		<RangeVal name="Amount" val={def.Amount}  update={(v) => props.update({...def, Amount: v})} />
+		<label>Loop</label>
+		<input type="checkbox" checked={def.Loop} 
+			onInput={(_evt) => props.update({...def, Loop: !def.Loop})}/>
 	</form>;
 }
 
@@ -131,12 +147,30 @@ function MacroEditor() {
 	switch (kind)
 	{
 		case "ad_env":
-			return <AdEnvEditor
+			return <AttackDecayEnvEditor
+						name="Attack Decay Enveloppe"
 						def={macroEditor.def}
-						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+						update={(env) => state.current_macro.value = { ...macroEditor, def: env }} />;
+
+		case "adsr_env":
+			return <AdsrEnvEditor
+						name="ADSR Enveloppe"
+						def={macroEditor.def}
+						update={(env) => state.current_macro.value = { ...macroEditor, def: env }} />;
 
 		case "tri_lfo":
-			return <TriLfoEditor
+			return <LfoEditor
+						name="Triangle LFO"
+						def={macroEditor.def}
+						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+		case "ramp_up_lfo":
+			return <LfoEditor
+						name="Ramp UP LFO"
+						def={macroEditor.def}
+						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+		case "ramp_down_lfo":
+			return <LfoEditor
+						name="Ramp Down LFO"
 						def={macroEditor.def}
 						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
 		case "free":
@@ -148,37 +182,36 @@ function MacroEditor() {
 
 function MacroChoice() {
 	const selectedIndex =
-		SegmentKindIndex[state.current_macro.value.kind];
+		SegmentKindIndex[state.current_macro.value.kind] - 1;
 	
 	const setMacro = (i : number) => {
 		state.current_macro.value = FreshMacro(i);
 	};
 
-	return <div>
+	const choices = [
+		// "Free",
+		"Attack Decay Env",
+		"ADSR Env",
+		"Triangle LFO",
+		"Ramp up LFO",
+		"Ramp down LFO"
+	];
+
+	const renderChoice = (choice: string, ix : number) =>
 		<div>
 			<label>
-				<input type="radio" checked={selectedIndex === 0} onInput={_ => setMacro(0)}></input>
-				Free
+				<input type="radio" checked={selectedIndex === ix} onInput={_ => setMacro(ix + 1)}></input>
+				{choice}
 			</label>
-		</div>
-		<div>
-			<label>
-				<input type="radio" checked={selectedIndex === 1} onInput={_ => setMacro(1)}></input>
-				Attack Decay Env
-			</label>
-		</div>
-		<div>
-			<label>
-				<input type="radio" checked={selectedIndex === 2} onInput={_ => setMacro(2)}></input>
-				Triangle LFO
-			</label>
-		</div>
-	</div>;
+		</div>;
+
+	return <div>{choices.map(renderChoice)}</div>;
 }
 
 function ScriptPlot() {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const script = state.script.value;
+	const param = state.current_parameter.value;
   
     useEffect(() => {
 		const current = canvasRef.current;
@@ -192,10 +225,10 @@ function ScriptPlot() {
         context.clearRect(0, 0, context.canvas.clientWidth, context.canvas.clientHeight);
 
         context.fillStyle = '#fff';
-		Plot(context, script);
+		Plot(context, param.value, script);
     }, [script]);
   
-    return <canvas ref={canvasRef} width={512} height={256}/>;
+    return <div><canvas class="visualization" ref={canvasRef} width={512} height={256}/></div>;
 }
 
 function InstrumentChoice() {
@@ -220,18 +253,39 @@ function InstrumentChoice() {
 
 function ValueChoice() {
 	const instrument = state.current_instrument.value;
+	const parameter = state.current_parameter.value;
+	const commands = CommandsOfInstrument[instrument];
 
-	return <select>
+	let allCommands : M8Command[]= [];
 
-	</select>;
+	const setValue = (ixStr : string) =>
+	{
+		const ix = Number.parseInt(ixStr, 10);
+		const cmd = allCommands[ix];
+		state.current_parameter.value = { ...cmd, value: parameter.value};
+	}
+
+	let i = 0;
+	const onCmd = (cmd : M8Command)  =>
+	{
+		allCommands.push(cmd);
+		return <option value={i++} selected={parameter.code === cmd.code}> {cmd.code} </option>;
+	}
+
+	const groups = commands.map(grp =>
+			<optgroup label={HumanCommandKindOfCommand(grp[0])}>{grp.map(onCmd)}</optgroup>);
+
+	return <select size={20} onChange={e => setValue(e.currentTarget.value)}>{groups}</select>;
 }
 
-/*
-			<div>
-				<h2>MIDI outputs</h2>
-				<MidiOutputs midi={midi} />
-			</div>
-			// */
+function InstrumentBaseValue() {
+	const param = state.current_parameter.value;
+
+	return <RangeVal name="Amount"
+					 val={param.value} 
+					 update={(v) => state.current_parameter.value = {...param, value: v}} />
+}
+
 export function App() {
 	return <div class="rootcontainer">
 		<div class="rootcolumn">
@@ -240,6 +294,8 @@ export function App() {
 			<h3>Instrument</h3>
 			<InstrumentChoice />
 			<h3>Value</h3>
+			<InstrumentBaseValue />
+			<ValueChoice />
 		</div>
 		<div class="rootcolumn">
 			<MacroEditor />
@@ -249,7 +305,7 @@ export function App() {
 			<ScriptRender />
 			<ScriptPlot />
 
-			<button onClick={_ => sendSequence(midi)}>M8 write</button>
+			<button onClick={_ => sendSequence(state.midi)}>M8 write</button>
 		</div>
 	</div>;
 }
@@ -257,9 +313,9 @@ export function App() {
 navigator.requestMIDIAccess()
 	.then(
 		(midiAccess : MIDIAccess) => {
-			console.log("MIDI ready!");
-			midi = midiAccess;
-
+			state = createState(midiAccess);
 			render(<App />, document.getElementById("app")!);
 		},
-		onMIDIFailure);
+		_ => {
+			render(<App />, document.getElementById("app")!);
+		});

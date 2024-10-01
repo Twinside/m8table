@@ -1,5 +1,5 @@
-import { computed, ReadonlySignal, Signal, signal } from "@preact/signals";
-import { IsFunctionRelative, M8Builder, M8Command, M8Instrument } from "./m8io";
+import { IsFunctionRelative, M8Builder, M8Command } from "./m8io";
+import { never } from "./state";
 
 /** Main definition of what we're trying to represent */
 export type Segment =
@@ -19,47 +19,144 @@ export type AttackDecayEnvMacro =
         Loop: boolean
     }
 
+export type ADSREnvMacro =
+    {
+        AttackTics: number,
+        DecayTics: number,
+        SustainTics: number,
+        SustainLevel: number,
+        ReleaseTics: number,
+        Amount: number,
+        Loop: boolean
+    }
+
 function* renderAttackDecay(
     parameter: M8Command,
     macro: AttackDecayEnvMacro) : Iterable<M8Command> {
 
-
-    const isRelative = IsFunctionRelative(parameter);
+    let instructionCount = 0;
 
     if (macro.AttackTics === 0) {
         yield {...parameter, value: macro.Amount };
+        instructionCount++;
     } else {
-        const attackRepeat = (macro.Amount / macro.AttackTics) | 0;
-        yield {...parameter, value: attackRepeat};
-        yield M8Builder.REP(macro.AttackTics);
+        const attackSlope = (macro.Amount / macro.AttackTics) | 0;
+        yield {...parameter, value: attackSlope};
+        instructionCount ++;
+
+        if (macro.AttackTics > 1) {
+            yield M8Builder.REP(macro.AttackTics - 1);
+            instructionCount++;
+        }
+
+    }
+
+    if (macro.DecayTics === 0) {
+        yield {...parameter, value: signed(macro.Amount) };
+        instructionCount++;
+    } else {
+        const decaySlope = (macro.Amount / macro.DecayTics) | 0;
+        yield {...parameter, value: signed(decaySlope)};
+        instructionCount++;
+
+        if (macro.DecayTics > 1) {
+            instructionCount++;
+            yield M8Builder.REP(macro.DecayTics - 1);
+        }
+
+    }
+
+    if (macro.Loop) {
+        yield M8Builder.HOP(0);
+    } else {
+        yield M8Builder.HOP(instructionCount);
     }
 }
 
-function* renderTriLfo(
+function* renderAdsr(
     parameter: M8Command,
-    macro: TriLFOEnvMacro) {
+    macro: ADSREnvMacro) : Iterable<M8Command> {
 
-    // const isRelative = IsFunctionRelative(parameter);
+    let instructionCount = 0;
 
+    if (macro.AttackTics === 0) {
+        yield {...parameter, value: macro.Amount };
+        instructionCount++;
+    } else {
+        const attackSlope = (macro.Amount / macro.AttackTics) | 0;
+        yield {...parameter, value: attackSlope};
+        instructionCount ++;
+
+        if (macro.AttackTics > 1) {
+            yield M8Builder.REP(macro.AttackTics - 1);
+            instructionCount++;
+        }
+
+    }
+
+    const sustainDelta = macro.Amount - macro.SustainLevel;
+
+    if (macro.DecayTics === 0) {
+        yield {...parameter, value: signed(sustainDelta) };
+        instructionCount++;
+    } else {
+        const decaySlope = (sustainDelta / macro.DecayTics) | 0;
+        yield {...parameter, value: signed(decaySlope)};
+        instructionCount++;
+
+        if (macro.DecayTics > 1) {
+            instructionCount++;
+            yield M8Builder.REP(macro.DecayTics - 1);
+        }
+    }
+
+    yield M8Builder.DEL(macro.SustainTics);
+    instructionCount++;
+
+    if (macro.ReleaseTics > 0) {
+        const releaseSlope = (macro.SustainLevel / macro.ReleaseTics) | 0;
+        yield {...parameter, value: signed(releaseSlope) };
+        instructionCount++;
+
+        if (macro.ReleaseTics > 1) {
+            instructionCount++;
+            yield M8Builder.REP(macro.ReleaseTics - 1);
+        }
+    } else {
+        yield {...parameter, value: signed(macro.SustainLevel) };
+        instructionCount++;
+    }
+
+    if (macro.Loop) {
+        yield M8Builder.HOP(0);
+    } else {
+        yield M8Builder.HOP(instructionCount);
+    }
+}
+
+function signed(v : number) : number {
+    return (0xFF - v + 1) % 0x100;
+}
+function* renderTriLfo(parameter: M8Command, macro: LFOEnvMacro) {
     const upDuration = (macro.Duration / 4) | 0;
     const downDuration = (macro.Duration / 2) | 0;
 
-    const attackRepeat = (macro.Amount / (macro.Duration / 2)) | 0;
+    const slope = (macro.Amount / (macro.Duration / 2)) | 0;
     let instruction_count = 3;
 
-    yield {...parameter, value: attackRepeat};
+    yield {...parameter, value: slope};
     if (upDuration > 1) {
         yield M8Builder.REP(upDuration - 1);
         instruction_count++;
     }
 
-    yield {...parameter, value: (0xFF - attackRepeat + 1) % 0x100 };
+    yield {...parameter, value: signed(slope) };
     if (downDuration > 1) {
         yield M8Builder.REP(downDuration - 1);
         instruction_count++;
     }
     
-    yield {...parameter, value: attackRepeat};
+    yield {...parameter, value: slope};
     if (upDuration > 1) {
         yield M8Builder.REP(upDuration - 1);
         instruction_count++;
@@ -72,7 +169,37 @@ function* renderTriLfo(
     }
 }
 
-export type TriLFOEnvMacro =
+function* renderSawLFO(parameter: M8Command, macro: LFOEnvMacro, downward: boolean) {
+    let instruction_count = 2;
+
+    const slope = (macro.Amount / macro.Duration) | 0;
+
+    if (downward) {
+        yield {...parameter, value: macro.Amount };
+        yield {...parameter, value: signed(slope) }
+    }
+    else {
+        yield {...parameter, value: slope }
+    }
+
+    if (macro.Duration > 1) {
+        yield M8Builder.REP(macro.Duration);
+        instruction_count++;
+    }
+
+    if (macro.Loop) {
+        if (!downward) {
+            // LFO reset
+            yield {...parameter, value: signed(macro.Amount) };
+        }
+
+        yield M8Builder.HOP(0);
+    } else {
+        yield M8Builder.HOP(instruction_count);
+    }
+}
+
+export type LFOEnvMacro =
     {
         Duration: number,
         Amount: number,
@@ -81,14 +208,20 @@ export type TriLFOEnvMacro =
 
 export type SegmentMacro =
     | { kind:"ad_env", def: AttackDecayEnvMacro }
-    | { kind:"tri_lfo", def: TriLFOEnvMacro }
+    | { kind:"adsr_env", def: ADSREnvMacro }
+    | { kind:"tri_lfo", def: LFOEnvMacro }
+    | { kind:"ramp_up_lfo", def: LFOEnvMacro }
+    | { kind:"ramp_down_lfo", def: LFOEnvMacro }
     | { kind:"free"}
 
 export function RenderMacro(parameter: M8Command, macro: SegmentMacro) : Iterable<M8Command> {
     const kind = macro.kind;
     switch (kind) {
         case "ad_env": return renderAttackDecay(parameter, macro.def);
+        case "adsr_env": return renderAdsr(parameter, macro.def);
         case "tri_lfo": return renderTriLfo(parameter, macro.def);
+        case "ramp_up_lfo": return renderSawLFO(parameter, macro.def, false);
+        case "ramp_down_lfo": return renderSawLFO(parameter, macro.def, true);
         case "free": return [];
         default:
             never(kind);
@@ -99,46 +232,26 @@ export const SegmentKindIndex : { [ix in SegmentMacro["kind"]]: number } =
     {
         free: 0,
         ad_env: 1,
-        tri_lfo: 2
+        adsr_env: 2,
+        tri_lfo: 3,
+        ramp_up_lfo: 4,
+        ramp_down_lfo: 5,
     } as const;
 
 export function FreshMacro(ix: number) : SegmentMacro {
     switch (ix) {
         case 1:
-            return { kind: "ad_env", def: { AttackTics: 0, DecayTics: 10, Amount: 0xFF, Loop: false }}
+            return { kind: "ad_env", def: { AttackTics: 0, DecayTics: 10, Amount: 0x30, Loop: false }}
         case 2:
+            return { kind: "adsr_env", def: { AttackTics: 7, DecayTics: 5, SustainTics: 29, ReleaseTics: 8, SustainLevel: 59, Amount: 0x50, Loop: false }}
+        case 3:
             return { kind: "tri_lfo", def: { Duration: 16, Amount: 10, Loop: true }}
+        case 4:
+            return { kind: "ramp_up_lfo", def: { Duration: 16, Amount: 10, Loop: true }}
+        case 5:
+            return { kind: "ramp_down_lfo", def: { Duration: 16, Amount: 10, Loop: true }}
         case 0:
         default:
             return { kind: "free" };
     }
-}
-
-export type State =
-    {
-        current_instrument: Signal<M8Instrument>,
-        current_parameter: Signal<M8Command>,
-        current_macro: Signal<SegmentMacro>,
-        current_segments: Signal<Segment[]>,
-        script: ReadonlySignal<M8Command[]>
-    }
-
-export const createState : () => State = () =>
-{
-    const current_parameter = signal(M8Builder.CUT(0));
-    const current_macro : Signal<SegmentMacro> = signal({kind: "free"});
-    const script = computed(() =>
-        [... RenderMacro(current_parameter.value, current_macro.value)]);
-
-    return {
-        current_instrument: signal("MA"),
-        current_parameter,
-        current_segments: signal([]),
-        current_macro,
-        script
-    };
-}
-
-export function never(_: never) : never {
-	throw 'never';
 }
