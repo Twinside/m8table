@@ -64,27 +64,29 @@ async function sendSequence(midi : MIDIAccess | undefined) {
 
 let state = createState(undefined);
 
-function RangeVal(props: { name: string, val: number, update: (v: number) => void }) {
+function RangeVal(props: { name: string, val: number, update: (v: number) => void, max?: number | undefined }) {
 	const onChange = (a : string) =>
 	{
 		const n = Number.parseInt(a, 10);
 		props.update(n);
 	}
 
+	const maxi = props.max === undefined ? 255 : props.max;
+
 	return <div class="valueEdit">
 		<label>{props.name}</label><br/>
 		<input
-			type="range" min="0" max="255"
+			type="range" min="0" max={maxi}
 			onInput={(evt) => onChange(evt.currentTarget.value)}
 			value={props.val}/>
 		<input
-			type="number" min="0" max="255"
+			type="number" min="0" max={maxi}
 			onInput={(evt) => onChange(evt.currentTarget.value)}
 			value={props.val} />
 	</div>;
 }
 
-function AttackDecayEnvEditor(props: { name: string, def: AttackDecayEnvMacro, update: (v: AttackDecayEnvMacro) => void  }) {
+function AttackDecayEnvEditor(props: { name: string, def: AttackDecayEnvMacro, update: (v: AttackDecayEnvMacro) => void}) {
 	const def = props.def;
 	return <form>
 		<h3>{props.name}</h3>
@@ -114,12 +116,12 @@ function AdsrEnvEditor(props: { name: string, def: ADSREnvMacro, update: (v: ADS
 	</form>;
 }
 
-function LfoEditor(props: { name: string, def: LFOEnvMacro, update: (v: LFOEnvMacro) => void }) {
+function LfoEditor(props: { name: string, def: LFOEnvMacro, update: (v: LFOEnvMacro) => void, maxAmount?: number | undefined   }) {
 	const def = props.def;
 	return <form>
 		<h3>{props.name}</h3>
 		<RangeVal name="Duration (tics)" val={def.Duration} update={(v) => props.update({...def, Duration: v})} />
-		<RangeVal name="Amount" val={def.Amount}  update={(v) => props.update({...def, Amount: v})} />
+		<RangeVal name="Amount" val={def.Amount}  update={(v) => props.update({...def, Amount: v})} max={props.maxAmount} />
 		<label>Loop</label>
 		<input type="checkbox" checked={def.Loop} 
 			onInput={(_evt) => props.update({...def, Loop: !def.Loop})}/>
@@ -164,6 +166,12 @@ function MacroEditor() {
 						name="Triangle LFO"
 						def={macroEditor.def}
 						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+		case "square_lfo":
+			return <LfoEditor
+						name="Square LFO"
+						def={macroEditor.def}
+						maxAmount={127}
+						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
 		case "ramp_up_lfo":
 			return <LfoEditor
 						name="Ramp UP LFO"
@@ -194,6 +202,7 @@ function MacroChoice() {
 		"Attack Decay Env",
 		"ADSR Env",
 		"Triangle LFO",
+		"Square LFO",
 		"Ramp up LFO",
 		"Ramp down LFO"
 	];
@@ -222,14 +231,25 @@ function ScriptPlot() {
 		if (context === null) return;
 
 
+		const width = context.canvas.clientWidth;
+		const height = context.canvas.clientHeight;
 
-        context.clearRect(0, 0, context.canvas.clientWidth, context.canvas.clientHeight);
+        context.clearRect(0, 0, width, height);
+
+        context.fillStyle = '#555';
+		for (var i = 1; i < 0xFF; i += 0x10)
+		{
+			context.fillRect(0, i, width, 1);
+		}
+
+        context.fillStyle = '#080';
+		context.fillRect(0, 0xFF - param.value, width, 2);
 
         context.fillStyle = '#fff';
 		Plot(context, param.value, script);
     }, [script]);
   
-    return <div><canvas class="visualization" ref={canvasRef} width={512} height={256}/></div>;
+    return <div><canvas class="visualization" ref={canvasRef} width={512 + 128} height={258}/></div>;
 }
 
 function InstrumentChoice() {

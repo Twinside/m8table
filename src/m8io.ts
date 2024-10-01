@@ -299,9 +299,11 @@ export function Plot(ctx: CanvasRenderingContext2D, baseValue: number, commands:
 
 			case M8SequencerCommand.HOP:
 				if (cmd.value === current_instruction)
+				{
 					render(value);
+					current_tick++;
+				}
 				current_instruction = cmd.value - 1;
-				current_tick++;
 				break;
 
 			default:
