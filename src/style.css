@@ -32,6 +32,7 @@ body {
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+  display: inline-block;
 }
 
 #app {
@@ -99,6 +100,13 @@ button:focus-visible {
   display: flex;
   flex-direction: row;
   margin: 20px;
+  width: 100%;
+}
+
+.rootheader {
+  display: flex;
+  flex-direction: row;
+  margin: 20px;
 }
 
 .rootcolumn {
@@ -110,4 +118,21 @@ button:focus-visible {
 .visualization {
   border-top: 1px solid black;
   border-bottom: 1px solid black;
+}
+
+.message {
+  display: block;
+  margin: 3.6em;
+  width: 100%;
+}
+
+.separator {
+  min-width: 4px;
+  border: 1px solid darkslategray;
+  margin-left: 1em;
+  margin-right: 1em;
+}
+
+.midistatus {
+  font-size: 15px;
 }

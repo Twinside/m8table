@@ -521,7 +521,7 @@ export class M8Controller {
 
 	public sendUserCommands(out: MIDIOutput, commands: Iterable<M8UserCommand>) {
 		let i = 0;
-        const timeBetweenNotes = 15; // ms
+        const timeBetweenNotes = 23; // ms
 
 		for (const command of commands) {
 			const status = this.keyStates[command];

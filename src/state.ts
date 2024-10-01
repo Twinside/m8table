@@ -9,7 +9,9 @@ export type State =
         current_macro: Signal<SegmentMacro>,
         current_segments: Signal<Segment[]>,
         script: ReadonlySignal<M8Command[]>
-        midi: MIDIAccess | undefined
+        midi: MIDIAccess | undefined,
+        m8Channel: Signal<number>,
+        m8port: Signal<string | undefined>
     }
 
 export function createState(midi: MIDIAccess | undefined) : State
@@ -25,7 +27,9 @@ export function createState(midi: MIDIAccess | undefined) : State
         current_segments: signal([]),
         current_macro,
         script,
-        midi
+        midi,
+        m8Channel: signal(10),
+        m8port: signal(undefined)
     };
 }
 

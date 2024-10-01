@@ -1,66 +1,11 @@
-import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument, M8Command, M8Controller, M8Instrument, Plot } from "./m8io";
+import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument, M8Command, M8Instrument, Plot } from "./m8io";
+import { findFirstNamedOutputPort, sendSequence } from "./midi";
 import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro } from "./model";
 import { createState, never } from "./state";
 import "./style.css";
 import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 
-/*
-function MidiOutputs(props : {midi: MIDIAccess | undefined }){
-	const { midi } = props;
-	const out = []
-
-	if (midi === undefined)
-		return <div>No midi!</div>;
-
-	for (const entry of midi.outputs) {
-		const output = entry[1];
-		out.push(
-			<div>
-				Output port [type:'{output.type}']
-				<ul>
-					<li>id:'{output.id}'</li>
-					<li>name:'{output.name}'</li>
-				</ul>
-
-			</div>
-		)
-	}
-
-	return out.length > 0
-		? <div>{out}</div>
-		: <div>No midi output found</div>;
-} // */
-
-function findFirstNamedOutputPort(midi : MIDIAccess | undefined, name: string) : MIDIOutput | undefined {
-	if (midi === undefined) return undefined;
-
-	for (const entry of midi.outputs) {
-		const output = entry[1];
-		if (output.name === name)
-			return output;
-	}
-
-	return undefined;
-}
-
-async function sendSequence(midi : MIDIAccess | undefined) {
-	if (midi === undefined) return;
-
-	const m8Port = findFirstNamedOutputPort(midi, "M8");
-
-	if (m8Port === undefined) {
-		console.log("No M8 found :(");
-		return;
-	}
-
-	await m8Port.open();
-
-	const m8 = new M8Controller(10);
-
-	// we don't want to register anything to be re-run or something
-	m8.sendCommands(m8Port, state.script.peek());
-}
 
 let state = createState(undefined);
 
@@ -307,26 +252,91 @@ function InstrumentBaseValue() {
 					 update={(v) => state.current_parameter.value = {...param, value: v}} />
 }
 
-export function App() {
-	return <div class="rootcontainer">
-		<div class="rootcolumn">
-			<h3>Generator</h3>
-			<MacroChoice />
-			<h3>Instrument</h3>
-			<InstrumentChoice />
-			<h3>Value</h3>
-			<InstrumentBaseValue />
-			<ValueChoice />
-		</div>
-		<div class="rootcolumn">
-			<MacroEditor />
-		</div>
-		<div class="rootcolumn">
-			<h3>M8 'script'</h3>
-			<ScriptRender />
-			<ScriptPlot />
+function TryUpdateM8Port() {
+	if (state.midi === undefined) return;
 
-			<button onClick={_ => sendSequence(state.midi)}>M8 write</button>
+	const port = findFirstNamedOutputPort(state.midi, "M8");
+	state.m8port.value = port?.id;
+}
+
+function MidiStatus() {
+
+	const port = state.m8Channel.value;
+	const m8port = state.m8port.value;
+
+	if (state.midi === undefined) {
+		return <div class="message">
+			No midi allowed, cannot write to M8, grant MIDI rights and refresh page
+		</div>;
+	}
+
+	const midiStatus =
+		m8port === undefined ? "No connected M8 found" :
+		"M8 OK, put cursor in an instrument table for writing.";
+
+	const setVal = (str : string) => {
+		const ix = Number.parseInt(str, 10);
+		state.m8Channel.value = ix;
+	};
+
+	return <div class="message">
+		<span class="midistatus">{midiStatus}</span>
+		<span class="separator"></span>
+		<label>
+			<span class="midistatus">M8 control channel : </span>
+			<input
+				type="number"
+				min="1" max="16"
+				title="M8 Midi control channel (10 by default)"
+				value={port}
+				onInput={evt => setVal(evt.currentTarget.value)}/>
+		</label>
+		<span class="separator"></span>
+		<button title="Search for M8" onClick={_ => TryUpdateM8Port()}>⟳ Refresh M8</button>
+	</div>
+}
+
+function sendCurrentScript() {
+	const port = findFirstNamedOutputPort(state.midi, "M8");
+	if (port === undefined) {
+		state.m8port.value = undefined;
+		alert("No M8 found, please connect and refresh")
+		return;
+	}
+
+	sendSequence(port, state.m8Channel.peek(), state.script.peek());
+}
+
+export function App() {
+	const disabled = state.m8port.value === undefined;
+
+	return <div>
+		<div class="rootheader">
+			<h1>M8 Table generator</h1>
+			<MidiStatus />
+		</div>
+		<div class="rootcontainer">
+			<div class="rootcolumn">
+				<h3>Generator</h3>
+				<MacroChoice />
+				<h3>Instrument</h3>
+				<InstrumentChoice />
+				<h3>Value</h3>
+				<InstrumentBaseValue />
+				<ValueChoice />
+			</div>
+			<div class="rootcolumn">
+				<MacroEditor />
+			</div>
+			<div class="rootcolumn">
+				<h3>M8 'script'</h3>
+				<ScriptRender />
+				<ScriptPlot />
+
+				<button
+				 	disabled={disabled}
+					onClick={_ => sendCurrentScript()}>M8 write</button>
+			</div>
 		</div>
 	</div>;
 }
@@ -336,6 +346,7 @@ try {
 		.then(
 			(midiAccess : MIDIAccess) => {
 				state = createState(midiAccess);
+				TryUpdateM8Port();
 				render(<App />, document.getElementById("app")!);
 			},
 			_ => {
