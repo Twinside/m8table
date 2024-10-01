@@ -2,12 +2,13 @@ import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument,
 import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro } from "./model";
 import { createState, never } from "./state";
 import "./style.css";
-import { JSX, render } from "preact";
+import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 
+/*
 function MidiOutputs(props : {midi: MIDIAccess | undefined }){
 	const { midi } = props;
-	const out : JSX.Element[] = []
+	const out = []
 
 	if (midi === undefined)
 		return <div>No midi!</div>;
@@ -29,7 +30,7 @@ function MidiOutputs(props : {midi: MIDIAccess | undefined }){
 	return out.length > 0
 		? <div>{out}</div>
 		: <div>No midi output found</div>;
-}
+} // */
 
 function findFirstNamedOutputPort(midi : MIDIAccess | undefined, name: string) : MIDIOutput | undefined {
 	if (midi === undefined) return undefined;
@@ -310,12 +311,20 @@ export function App() {
 	</div>;
 }
 
-navigator.requestMIDIAccess()
-	.then(
-		(midiAccess : MIDIAccess) => {
-			state = createState(midiAccess);
-			render(<App />, document.getElementById("app")!);
-		},
-		_ => {
-			render(<App />, document.getElementById("app")!);
-		});
+try {
+	navigator.requestMIDIAccess()
+		.then(
+			(midiAccess : MIDIAccess) => {
+				state = createState(midiAccess);
+				render(<App />, document.getElementById("app")!);
+			},
+			_ => {
+				render(<App />, document.getElementById("app")!);
+			});
+} catch {
+	document.addEventListener('DOMContentLoaded', function () {
+		// moving on...
+		const app = document.getElementById("app");
+		render(<App />, app!);
+	}, false);
+}

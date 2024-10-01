@@ -1,4 +1,4 @@
-import { IsFunctionRelative, M8Builder, M8Command } from "./m8io";
+import { M8Builder, M8Command } from "./m8io";
 import { never } from "./state";
 
 /** Main definition of what we're trying to represent */
