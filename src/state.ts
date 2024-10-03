@@ -15,7 +15,7 @@ export type State =
 
 export function createState(midi: MIDIAccess | undefined) : State
 {
-    const current_parameter = signal(M8Builder.CUT(0));
+    const current_parameter = signal(M8Builder.CUT(80));
     const current_macro : Signal<SegmentMacro> = signal(FreshMacro(2));
     const script = computed(() =>
         [... RenderMacro(current_parameter.value, current_macro.value)]);
