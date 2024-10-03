@@ -142,3 +142,11 @@ button:focus-visible {
 
   border: 1px dashed gray;
 }
+
+.warncolor {
+  color: orange;
+}
+
+.errorcolor {
+  color: red;
+}

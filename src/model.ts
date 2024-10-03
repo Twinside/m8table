@@ -258,7 +258,7 @@ function* renderFreeSegments(parameter: M8Command, macro: FreeFormMacro) : Itera
         if (seg.TicDuration <= 1) {
             yield {...parameter, value: seg.Amount < 0 ? signed(seg.Amount) : (seg.Amount | 0) }
             instruction_count++;
-        } else {
+        } else if (seg.Amount !== 0) {
             const absValue = seg.Amount < 0
                 ? Math.abs(seg.Amount)
                 : seg.Amount;
@@ -268,6 +268,8 @@ function* renderFreeSegments(parameter: M8Command, macro: FreeFormMacro) : Itera
             yield {...parameter, value: signedSlope}
             yield M8Builder.REP(seg.TicDuration - 1);
             instruction_count += 2;
+        } else {
+            yield M8Builder.DEL(seg.TicDuration);
         }
     }
 

@@ -80,7 +80,7 @@ function RenderSegment(props: { seg: Segment, update: (seg: Segment) => void, re
 	return <form class="segmentedit">
 		<RangeVal name="Duration (tics)" val={seg.TicDuration}  update={(v) => props.update({...seg, TicDuration: v})} />
 		<RangeVal name="Amount" val={seg.Amount} min={-128} max={127} update={(v) => props.update({...seg, Amount: v})} />
-		<button tile="Remove segment" onClick={() => props.remove()}>Remove</button>
+		<button title="Remove segment" onClick={() => props.remove()}>Remove</button>
 	</form>;
 }
 
@@ -125,13 +125,16 @@ function hexCode(n : number) {
 	return asHex.length < 2 ? "0" + asHex : asHex;
 }
 function M8CommandScriptRender(id: number, cmd: M8Command) {
-	return `${hexCode(id)} : ${cmd.code} ${hexCode(cmd.value)}`;
+	const str = `${hexCode(id)} : ${cmd.code} ${hexCode(cmd.value)}\n`;
+	return id === 0x0F ? <span class="warncolor" title="Beware approaching instruction count limit...">{str}</span> :
+		   id > 0x0F   ? <span class="errorcolor" title="Out of bound instruction, cannot be executed.">{str}</span> :
+		   str;
 }
 
 function ScriptRender() {
 	const script = state.script.value;
 	return <pre>
-		{script.map((c, i) => M8CommandScriptRender(i, c) + '\n')}
+		{script.map((c, i) => M8CommandScriptRender(i, c))}
 	</pre>;
 }
 
@@ -358,7 +361,10 @@ function sendCurrentScript() {
 }
 
 export function App() {
-	const disabled = state.m8port.value === undefined;
+	const scriptTooLong = state.script.value.length > 0x0F;
+	const disabled =
+		state.m8port.value === undefined ||
+		scriptTooLong;
 
 	return <div>
 		<div class="rootheader">
@@ -383,9 +389,12 @@ export function App() {
 				<ScriptRender />
 				<ScriptPlot />
 
-				<button
-				 	disabled={disabled}
-					onClick={_ => sendCurrentScript()}>M8 write</button>
+				<div>
+					<button
+						disabled={disabled}
+						onClick={_ => sendCurrentScript()}>M8 write</button>
+					{scriptTooLong ? "Your script is too long and can't be executed on a M8" : ""}
+				</div>
 			</div>
 		</div>
 	</div>;
