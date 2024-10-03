@@ -1,6 +1,6 @@
 import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument, M8Command, M8Instrument, Plot } from "./m8io";
 import { findFirstNamedOutputPort, sendSequence } from "./midi";
-import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro } from "./model";
+import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro, Segment, FreeFormMacro } from "./model";
 import { createState, never } from "./state";
 import "./style.css";
 import { render } from "preact";
@@ -9,7 +9,7 @@ import { useEffect, useRef } from "preact/hooks";
 
 let state = createState(undefined);
 
-function RangeVal(props: { name: string, val: number, update: (v: number) => void, max?: number | undefined }) {
+function RangeVal(props: { name: string, val: number, update: (v: number) => void, min?: number | undefined, max?: number | undefined }) {
 	const onChange = (a : string) =>
 	{
 		const n = Number.parseInt(a, 10);
@@ -17,15 +17,16 @@ function RangeVal(props: { name: string, val: number, update: (v: number) => voi
 	}
 
 	const maxi = props.max === undefined ? 255 : props.max;
+	const mini = props.min === undefined ? 0 : props.min;
 
 	return <div class="valueEdit">
 		<label>{props.name}</label><br/>
 		<input
-			type="range" min="0" max={maxi}
+			type="range" min={mini} max={maxi}
 			onInput={(evt) => onChange(evt.currentTarget.value)}
 			value={props.val}/>
 		<input
-			type="number" min="0" max={maxi}
+			type="number" min={mini} max={maxi}
 			onInput={(evt) => onChange(evt.currentTarget.value)}
 			value={props.val} />
 	</div>;
@@ -73,6 +74,52 @@ function LfoEditor(props: { name: string, def: LFOEnvMacro, update: (v: LFOEnvMa
 	</form>;
 }
 
+function RenderSegment(props: { seg: Segment, update: (seg: Segment) => void, remove: () => void }) {
+	const seg = props.seg;
+
+	return <form class="segmentedit">
+		<RangeVal name="Duration (tics)" val={seg.TicDuration}  update={(v) => props.update({...seg, TicDuration: v})} />
+		<RangeVal name="Amount" val={seg.Amount} min={-128} max={127} update={(v) => props.update({...seg, Amount: v})} />
+		<button tile="Remove segment" onClick={() => props.remove()}>Remove</button>
+	</form>;
+}
+
+function FreeFormEditor( props: { name: string, def: FreeFormMacro, update: (v: FreeFormMacro) => void }) {
+	const def = props.def;
+
+	const addSegment = () =>
+		props.update({...def, Segments: [...def.Segments, {Amount: 10, TicDuration: 10 }]});
+
+	const segmentWidgets = def.Segments.map((seg, i) =>
+		{
+			const update = (newSeg : Segment) => {
+				const newSegs = [...def.Segments];
+				newSegs[i] = newSeg;
+				props.update({...def, Segments: newSegs });
+			}
+
+			const remove = () => {
+				const newSegs = [...def.Segments];
+				newSegs.splice(i, 1);
+				props.update({...def, Segments: newSegs });
+			}
+
+			return <RenderSegment seg={seg} update={update} remove={remove} />
+		});
+
+	return <div>
+		<h3>{props.name}</h3>
+		<div class="segmentList">
+			{segmentWidgets}
+		</div>
+		<button title="Add a segment" onClick={_ => addSegment()}>+</button>
+		<label>Loop</label>
+		<input type="checkbox" checked={def.Loop} 
+			onInput={(_evt) => props.update({...def, Loop: !def.Loop})}/>
+	</div>;
+}
+
+
 function hexCode(n : number) {
 	const asHex = n.toString(16);
 	return asHex.length < 2 ? "0" + asHex : asHex;
@@ -94,6 +141,11 @@ function MacroEditor() {
 	const kind = macroEditor.kind;
 	switch (kind)
 	{
+		case "free":
+			return <FreeFormEditor
+						name="Free form"
+						def={macroEditor.def}
+						update={(env) => state.current_macro.value = { ...macroEditor, def: env }} />;
 		case "ad_env":
 			return <AttackDecayEnvEditor
 						name="Attack Decay Enveloppe"
@@ -127,8 +179,6 @@ function MacroEditor() {
 						name="Ramp Down LFO"
 						def={macroEditor.def}
 						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
-		case "free":
-			return <></>;
 		default:
 			never(kind);
 	}
@@ -136,14 +186,14 @@ function MacroEditor() {
 
 function MacroChoice() {
 	const selectedIndex =
-		SegmentKindIndex[state.current_macro.value.kind] - 1;
+		SegmentKindIndex[state.current_macro.value.kind];
 	
 	const setMacro = (i : number) => {
 		state.current_macro.value = FreshMacro(i);
 	};
 
 	const choices = [
-		// "Free",
+		"Free",
 		"Attack Decay Env",
 		"ADSR Env",
 		"Triangle LFO",
@@ -155,7 +205,7 @@ function MacroChoice() {
 	const renderChoice = (choice: string, ix : number) =>
 		<div>
 			<label>
-				<input type="radio" checked={selectedIndex === ix} onInput={_ => setMacro(ix + 1)}></input>
+				<input type="radio" checked={selectedIndex === ix} onInput={_ => setMacro(ix)}></input>
 				{choice}
 			</label>
 		</div>;

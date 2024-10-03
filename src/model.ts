@@ -4,11 +4,20 @@ import { never } from "./state";
 /** Main definition of what we're trying to represent */
 export type Segment =
     {
-        /** How much do we increase or decrease a value each step */
-        Increment: number,
+        /** How much do we increase or decrease value on all steps */
+        Amount: number,
 
         /** Duration of the segment in TIC, tic duration can vary. */
         TicDuration: number
+    }
+
+/** Free form shape, defined by afine segments */
+export type FreeFormMacro =
+    {
+        /** List of segments of the shape */
+        Segments: Segment[],
+        /** Are we looping? */
+        Loop: boolean
     }
 
 export type AttackDecayEnvMacro =
@@ -201,18 +210,12 @@ function* renderSquareLfo(parameter: M8Command, macro: LFOEnvMacro) {
     }
 }
 
-function* renderSawLFO(parameter: M8Command, macro: LFOEnvMacro, downward: boolean) {
+function* renderSawUpLFO(parameter: M8Command, macro: LFOEnvMacro) : Iterable<M8Command> {
     let instruction_count = 2;
 
     const slope = (macro.Amount / macro.Duration) | 0;
 
-    if (downward) {
-        yield {...parameter, value: macro.Amount };
-        yield {...parameter, value: signed(slope) }
-    }
-    else {
-        yield {...parameter, value: slope }
-    }
+    yield {...parameter, value: slope }
 
     if (macro.Duration > 1) {
         yield M8Builder.REP(macro.Duration);
@@ -220,24 +223,74 @@ function* renderSawLFO(parameter: M8Command, macro: LFOEnvMacro, downward: boole
     }
 
     if (macro.Loop) {
-        if (!downward) {
-            // LFO reset
-            yield {...parameter, value: signed(macro.Amount) };
-        }
-
+        // LFO reset
+        yield {...parameter, value: signed(macro.Amount) };
         yield M8Builder.HOP(0);
     } else {
         yield M8Builder.HOP(instruction_count);
     }
 }
 
+function* renderSawDownLFO(parameter: M8Command, macro: LFOEnvMacro) : Iterable<M8Command> {
+    let instruction_count = 2;
+
+    const slope = (macro.Amount / macro.Duration) | 0;
+
+    yield {...parameter, value: macro.Amount };
+    yield {...parameter, value: signed(slope) }
+
+    if (macro.Duration > 1) {
+        yield M8Builder.REP(macro.Duration);
+        instruction_count++;
+    }
+
+    if (macro.Loop) {
+        yield M8Builder.HOP(0);
+    } else {
+        yield M8Builder.HOP(instruction_count);
+    }
+}
+
+function* renderFreeSegments(parameter: M8Command, macro: FreeFormMacro) : Iterable<M8Command> {
+    let instruction_count = 0;
+
+    for (const seg of macro.Segments) {
+        if (seg.TicDuration <= 1) {
+            yield {...parameter, value: seg.Amount < 0 ? signed(seg.Amount) : (seg.Amount | 0) }
+            instruction_count++;
+        } else {
+            const absValue = seg.Amount < 0
+                ? Math.abs(seg.Amount)
+                : seg.Amount;
+
+            const slope = (absValue / seg.TicDuration) | 0;
+            const signedSlope = seg.Amount < 0 ? signed(slope) : slope;
+            yield {...parameter, value: signedSlope}
+            yield M8Builder.REP(seg.TicDuration - 1);
+            instruction_count += 2;
+        }
+    }
+
+    if (macro.Loop) {
+        yield M8Builder.HOP(0);
+    } else {
+        yield M8Builder.HOP(instruction_count);
+    }
+}
+
+
+/** Generic LFO configuration */
 export type LFOEnvMacro =
     {
+        /** Duration in TICS */
         Duration: number,
+        /** Amount (absolute). Value should oscillate around zero */
         Amount: number,
+        /** Do we loop the LFO or one shot. */
         Loop: boolean
     }
 
+/** Sum type representing all possible generators  */
 export type SegmentMacro =
     | { kind:"ad_env", def: AttackDecayEnvMacro }
     | { kind:"adsr_env", def: ADSREnvMacro }
@@ -245,7 +298,7 @@ export type SegmentMacro =
     | { kind:"square_lfo", def: LFOEnvMacro }
     | { kind:"ramp_up_lfo", def: LFOEnvMacro }
     | { kind:"ramp_down_lfo", def: LFOEnvMacro }
-    | { kind:"free"}
+    | { kind:"free", def:FreeFormMacro  }
 
 export function RenderMacro(parameter: M8Command, macro: SegmentMacro) : Iterable<M8Command> {
     const kind = macro.kind;
@@ -254,9 +307,9 @@ export function RenderMacro(parameter: M8Command, macro: SegmentMacro) : Iterabl
         case "adsr_env": return renderAdsr(parameter, macro.def);
         case "tri_lfo": return renderTriLfo(parameter, macro.def);
         case "square_lfo": return renderSquareLfo(parameter, macro.def);
-        case "ramp_up_lfo": return renderSawLFO(parameter, macro.def, false);
-        case "ramp_down_lfo": return renderSawLFO(parameter, macro.def, true);
-        case "free": return [];
+        case "ramp_up_lfo": return renderSawUpLFO(parameter, macro.def);
+        case "ramp_down_lfo": return renderSawDownLFO(parameter, macro.def);
+        case "free": return renderFreeSegments(parameter, macro.def);
         default:
             never(kind);
     }
@@ -289,6 +342,6 @@ export function FreshMacro(ix: number) : SegmentMacro {
             return { kind: "ramp_down_lfo", def: { Duration: 22, Amount: 47, Loop: true }}
         case 0:
         default:
-            return { kind: "free" };
+            return { kind: "free", def: { Segments: [{ Amount: 40, TicDuration: 10 }], Loop: false }};
     }
 }

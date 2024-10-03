@@ -136,3 +136,9 @@ button:focus-visible {
 .midistatus {
   font-size: 15px;
 }
+
+.segmentedit {
+  font-size: 0.9em;
+
+  border: 1px dashed gray;
+}

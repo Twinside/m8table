@@ -15,10 +15,11 @@ export default defineConfig({
 	base: './',
 	plugins: [preact(), noAttr() ],
 	build: {
+	    /*
 		minify: false,
 		terserOptions: {
 			compress: false,
 			mangle: false,
-		},
+		}, // */
 	},
 });

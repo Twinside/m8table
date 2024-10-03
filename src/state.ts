@@ -1,13 +1,12 @@
 import { computed, ReadonlySignal, Signal, signal } from "@preact/signals";
 import { M8Builder, M8Command, M8Instrument } from "./m8io";
-import { FreshMacro, RenderMacro, Segment, SegmentMacro } from "./model";
+import { FreshMacro, RenderMacro, SegmentMacro } from "./model";
 
 export type State =
     {
         current_instrument: Signal<M8Instrument>,
         current_parameter: Signal<M8Command>,
         current_macro: Signal<SegmentMacro>,
-        current_segments: Signal<Segment[]>,
         script: ReadonlySignal<M8Command[]>
         midi: MIDIAccess | undefined,
         m8Channel: Signal<number>,
@@ -24,7 +23,6 @@ export function createState(midi: MIDIAccess | undefined) : State
     return {
         current_instrument: signal("MA"),
         current_parameter,
-        current_segments: signal([]),
         current_macro,
         script,
         midi,
