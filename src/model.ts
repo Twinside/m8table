@@ -292,6 +292,102 @@ export type LFOEnvMacro =
         Loop: boolean
     }
 
+/////////////////////////////////////////////////////////////////////////
+//////  LFO
+/////////////////////////////////////////////////////////////////////////
+
+function lfoEnvFromQuery(params: URLSearchParams) : LFOEnvMacro | undefined{
+    const durationStr = params.get("duration");
+    const amountStr = params.get("amount");
+
+    if (durationStr === null || amountStr === null) return undefined;
+
+    const Duration = Number.parseInt(durationStr, 10);
+    const Amount = Number.parseInt(amountStr, 10);
+    const Loop = params.has("loop");
+
+    return { Duration, Amount, Loop }
+}
+
+function queryParamsFromLfo(macro: LFOEnvMacro, params: URLSearchParams) {
+    params.append("duration", macro.Duration.toString(10));
+    params.append("amount", macro.Duration.toString(10));
+
+    if (macro.Loop)
+        params.append("loop", "1");
+}
+
+/////////////////////////////////////////////////////////////////////////
+//////  Attack/Decay env
+/////////////////////////////////////////////////////////////////////////
+function adEnvFromQuery(params : URLSearchParams) : AttackDecayEnvMacro | undefined {
+    const attackStr = params.get("attack");
+    const decayStr = params.get("decay");
+    const amountStr = params.get("amount");
+
+    if (attackStr === null || decayStr == null || amountStr == null)
+        return undefined;
+
+    return {
+        AttackTics: Number.parseInt(attackStr, 10),
+        DecayTics: Number.parseInt(decayStr, 10),
+        Amount: Number.parseInt(amountStr, 10),
+        Loop: params.has("loop")
+    }
+}
+
+function querParamsFromAdEnv(macro: AttackDecayEnvMacro, params: URLSearchParams) {
+    params.append("attack", macro.AttackTics.toString(10));
+    params.append("decay", macro.DecayTics.toString(10));
+    params.append("amount", macro.Amount.toString(10));
+
+    if (macro.Loop)
+        params.append("loop", "1");
+}
+
+/////////////////////////////////////////////////////////////////////////
+//////  ADSR env
+/////////////////////////////////////////////////////////////////////////
+
+function adsrEnvFromQuery(params: URLSearchParams) : ADSREnvMacro | undefined {
+    const attackStr = params.get("attack");
+    const sustainStr = params.get("sustain");
+    const sustainTicsStr = params.get("sustaintic");
+    const decayStr = params.get("decay");
+    const amountStr = params.get("amount");
+    const releaseStr = params.get("release");
+
+    if (attackStr === null || decayStr == null || amountStr == null ||
+        sustainStr == null || releaseStr == null || sustainTicsStr == null)
+        return undefined;
+
+    return {
+        AttackTics: Number.parseInt(attackStr, 10),
+        DecayTics: Number.parseInt(decayStr, 10),
+        SustainLevel: Number.parseInt(sustainStr, 10),
+        SustainTics: Number.parseInt(sustainTicsStr, 10),
+        Amount: Number.parseInt(amountStr, 10),
+        ReleaseTics: Number.parseInt(releaseStr, 10),
+        Loop: params.has("loop")
+    }
+}
+
+function queryParamFromAdsr(macro: ADSREnvMacro, params: URLSearchParams) {
+    params.append("attack", macro.AttackTics.toString(10));
+    params.append("sustain", macro.SustainLevel.toString(10));
+    params.append("sustaintic", macro.SustainTics.toString(10));
+    params.append("decay", macro.DecayTics.toString(10));
+    params.append("amount", macro.Amount.toString(10));
+    params.append("release", macro.ReleaseTics.toString(10));
+
+    if (macro.Loop)
+        params.append("loop", "1");
+}
+
+/////////////////////////////////////////////////////////////////////////
+//////  Free env
+/////////////////////////////////////////////////////////////////////////
+
 /** Sum type representing all possible generators  */
 export type SegmentMacro =
     | { kind:"ad_env", def: AttackDecayEnvMacro }
@@ -301,6 +397,59 @@ export type SegmentMacro =
     | { kind:"ramp_up_lfo", def: LFOEnvMacro }
     | { kind:"ramp_down_lfo", def: LFOEnvMacro }
     | { kind:"free", def:FreeFormMacro  }
+
+export function MacroAsUrlQuery(macro: SegmentMacro) : URLSearchParams {
+    const params = new URLSearchParams();
+    params.append("kind", macro.kind);
+
+    const kind = macro.kind;
+    switch (kind) {
+        case "ad_env": querParamsFromAdEnv(macro.def, params); break;
+        case "adsr_env": queryParamFromAdsr(macro.def, params); break;
+        case "tri_lfo":
+        case "square_lfo":
+        case "ramp_up_lfo":
+        case "ramp_down_lfo": queryParamsFromLfo(macro.def, params); break;
+        case "free": return params;
+        default:
+            never(kind);
+    }
+
+    return params;
+
+}
+
+export function TryParseUrlMacro(params: URLSearchParams) : SegmentMacro | undefined {
+    switch (params.get("kind")) {
+        case "ad_env": {
+            const def = adEnvFromQuery(params);
+            return def !== undefined ? { kind: "ad_env", def} : undefined;
+        }
+        case "adsr_env": {
+            const def = adsrEnvFromQuery(params);
+            return def !== undefined ? { kind: "adsr_env", def} : undefined;
+        }
+        case "tri_lfo": {
+            const def = lfoEnvFromQuery(params);
+            return def !== undefined ? { kind: "tri_lfo", def } : undefined;
+        }
+        case "square_lfo": {
+            const def = lfoEnvFromQuery(params);
+            return def !== undefined ? { kind: "square_lfo", def } : undefined;
+        }
+        case "ramp_up_lfo": {
+            const def = lfoEnvFromQuery(params);
+            return def !== undefined ? { kind: "ramp_up_lfo", def } : undefined;
+        }
+        case "ramp_down_lfo": {
+            const def = lfoEnvFromQuery(params);
+            return def !== undefined ? { kind: "ramp_down_lfo", def } : undefined;
+        }
+        case "free":
+        default:
+            return undefined;
+    }
+}
 
 export function RenderMacro(parameter: M8Command, macro: SegmentMacro) : Iterable<M8Command> {
     const kind = macro.kind;

@@ -1,6 +1,6 @@
 import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument, M8Command, M8Instrument, Plot } from "./m8io";
 import { findFirstNamedOutputPort, sendSequence } from "./midi";
-import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro, Segment, FreeFormMacro } from "./model";
+import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro, Segment, FreeFormMacro, SegmentMacro, MacroAsUrlQuery } from "./model";
 import { createState, never } from "./state";
 import "./style.css";
 import { render } from "preact";
@@ -138,6 +138,17 @@ function ScriptRender() {
 	</pre>;
 }
 
+function updateUrl(macro : SegmentMacro) {
+	if (!window.history.pushState) return;
+
+    var url = new URL(window.location.href);
+    var params = MacroAsUrlQuery(macro);
+
+    url.search = params.toString();
+    const strUrl = url.toString();
+    window.history.replaceState({url: strUrl}, "", strUrl);
+}
+
 function MacroEditor() {
 	const macroEditor = state.current_macro.value;
 
@@ -148,40 +159,68 @@ function MacroEditor() {
 			return <FreeFormEditor
 						name="Free form"
 						def={macroEditor.def}
-						update={(env) => state.current_macro.value = { ...macroEditor, def: env }} />;
+						update={(env) => {
+							const fresh = { ...macroEditor, def: env }
+							updateUrl(fresh);
+							state.current_macro.value = fresh;
+						}} />;
 		case "ad_env":
 			return <AttackDecayEnvEditor
 						name="Attack Decay Enveloppe"
 						def={macroEditor.def}
-						update={(env) => state.current_macro.value = { ...macroEditor, def: env }} />;
+						update={(env) => {
+							const fresh = { ...macroEditor, def: env }
+							updateUrl(fresh);
+							state.current_macro.value = fresh;
+						}} />;
 
 		case "adsr_env":
 			return <AdsrEnvEditor
 						name="ADSR Enveloppe"
 						def={macroEditor.def}
-						update={(env) => state.current_macro.value = { ...macroEditor, def: env }} />;
+						update={(env) => {
+							const fresh = { ...macroEditor, def: env }
+							updateUrl(fresh);
+							state.current_macro.value = fresh;
+						}} />;
 
 		case "tri_lfo":
 			return <LfoEditor
 						name="Triangle LFO"
 						def={macroEditor.def}
-						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+						update={(lfo) => {
+							const fresh = { ...macroEditor, def: lfo }
+							updateUrl(fresh);
+							state.current_macro.value = fresh;
+						}} />;
 		case "square_lfo":
 			return <LfoEditor
 						name="Square LFO"
 						def={macroEditor.def}
 						maxAmount={127}
-						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+						update={(lfo) => {
+							const fresh = { ...macroEditor, def: lfo }
+							updateUrl(fresh);
+							state.current_macro.value = fresh;
+						}} />;
 		case "ramp_up_lfo":
 			return <LfoEditor
 						name="Ramp UP LFO"
 						def={macroEditor.def}
-						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+						update={(lfo) => {
+							const fresh = { ...macroEditor, def: lfo }
+							updateUrl(fresh);
+							state.current_macro.value = fresh;
+						}} />;
 		case "ramp_down_lfo":
 			return <LfoEditor
 						name="Ramp Down LFO"
 						def={macroEditor.def}
-						update={(lfo) => state.current_macro.value = { ...macroEditor, def: lfo }} />;
+						update={(lfo) => {
+							const fresh = { ...macroEditor, def: lfo }
+							updateUrl(fresh);
+							state.current_macro.value = fresh;
+						}} />;
 		default:
 			never(kind);
 	}
