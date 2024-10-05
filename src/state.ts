@@ -1,6 +1,6 @@
 import { computed, ReadonlySignal, Signal, signal } from "@preact/signals";
-import { M8Builder, M8Command, M8Instrument } from "./m8io";
-import { FreshMacro, RenderMacro, SegmentMacro } from "./model";
+import { CommandsOfInstrument, M8Builder, M8Command, M8Instrument, ParseM8Instrument } from "./m8io";
+import { Keys, FreshMacro, RenderMacro, SegmentMacro, TryParseUrlMacro } from "./model";
 
 export type State =
     {
@@ -13,15 +13,42 @@ export type State =
         m8port: Signal<string | undefined>
     }
 
+function tryFindCommand(instr : M8Instrument, commandName : string) : M8Command | undefined {
+    const commandGroups = CommandsOfInstrument[instr];
+
+    for (const commands of commandGroups) {
+        for (const command of commands) {
+            if (command.code === commandName) {
+                return command;
+            }
+        }
+    }
+
+    return undefined;
+}
+
 export function createState(midi: MIDIAccess | undefined) : State
 {
-    const current_parameter = signal(M8Builder.CUT(80));
-    const current_macro : Signal<SegmentMacro> = signal(FreshMacro(2));
+    const params = new URL(document.location.href).searchParams;
+
+    const instr = ParseM8Instrument(params.get(Keys.Instrument)) || "MA";
+    const macro = TryParseUrlMacro(params) || FreshMacro(2);
+    const defaultAmountStr = params.get(Keys.ValueTargetAmount);
+    const value = defaultAmountStr !== null
+        ? Math.max(0, Math.min(255, Number.parseInt(defaultAmountStr, 10)))
+        : 80;
+
+    const target = params.get(Keys.ValueTarget) || "CUT";
+    const command = tryFindCommand(instr, target) || M8Builder.CUT(value);
+
+
+    const current_parameter = signal({...command, value });
+    const current_macro : Signal<SegmentMacro> = signal(macro);
     const script = computed(() =>
         [... RenderMacro(current_parameter.value, current_macro.value)]);
 
     return {
-        current_instrument: signal("MA"),
+        current_instrument: signal(instr),
         current_parameter,
         current_macro,
         script,
@@ -29,8 +56,4 @@ export function createState(midi: MIDIAccess | undefined) : State
         m8Channel: signal(10),
         m8port: signal(undefined)
     };
-}
-
-export function never(_: never) : never {
-	throw 'never';
 }

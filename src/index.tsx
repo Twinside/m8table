@@ -1,7 +1,8 @@
+import { never } from "./helper";
 import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument, M8Command, M8Instrument, Plot } from "./m8io";
 import { findFirstNamedOutputPort, sendSequence } from "./midi";
-import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro, Segment, FreeFormMacro, SegmentMacro, MacroAsUrlQuery } from "./model";
-import { createState, never } from "./state";
+import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro, Segment, FreeFormMacro, MacroAsUrlQuery, Keys } from "./model";
+import { createState } from "./state";
 import "./style.css";
 import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
@@ -138,17 +139,6 @@ function ScriptRender() {
 	</pre>;
 }
 
-function updateUrl(macro : SegmentMacro) {
-	if (!window.history.pushState) return;
-
-    var url = new URL(window.location.href);
-    var params = MacroAsUrlQuery(macro);
-
-    url.search = params.toString();
-    const strUrl = url.toString();
-    window.history.replaceState({url: strUrl}, "", strUrl);
-}
-
 function MacroEditor() {
 	const macroEditor = state.current_macro.value;
 
@@ -161,7 +151,6 @@ function MacroEditor() {
 						def={macroEditor.def}
 						update={(env) => {
 							const fresh = { ...macroEditor, def: env }
-							updateUrl(fresh);
 							state.current_macro.value = fresh;
 						}} />;
 		case "ad_env":
@@ -170,7 +159,6 @@ function MacroEditor() {
 						def={macroEditor.def}
 						update={(env) => {
 							const fresh = { ...macroEditor, def: env }
-							updateUrl(fresh);
 							state.current_macro.value = fresh;
 						}} />;
 
@@ -180,7 +168,6 @@ function MacroEditor() {
 						def={macroEditor.def}
 						update={(env) => {
 							const fresh = { ...macroEditor, def: env }
-							updateUrl(fresh);
 							state.current_macro.value = fresh;
 						}} />;
 
@@ -190,7 +177,6 @@ function MacroEditor() {
 						def={macroEditor.def}
 						update={(lfo) => {
 							const fresh = { ...macroEditor, def: lfo }
-							updateUrl(fresh);
 							state.current_macro.value = fresh;
 						}} />;
 		case "square_lfo":
@@ -200,7 +186,6 @@ function MacroEditor() {
 						maxAmount={127}
 						update={(lfo) => {
 							const fresh = { ...macroEditor, def: lfo }
-							updateUrl(fresh);
 							state.current_macro.value = fresh;
 						}} />;
 		case "ramp_up_lfo":
@@ -209,7 +194,6 @@ function MacroEditor() {
 						def={macroEditor.def}
 						update={(lfo) => {
 							const fresh = { ...macroEditor, def: lfo }
-							updateUrl(fresh);
 							state.current_macro.value = fresh;
 						}} />;
 		case "ramp_down_lfo":
@@ -218,7 +202,6 @@ function MacroEditor() {
 						def={macroEditor.def}
 						update={(lfo) => {
 							const fresh = { ...macroEditor, def: lfo }
-							updateUrl(fresh);
 							state.current_macro.value = fresh;
 						}} />;
 		default:
@@ -439,21 +422,42 @@ export function App() {
 	</div>;
 }
 
+function updateUrl() {
+	if (!window.history.pushState) return;
+
+    var url = new URL(window.location.href);
+	const macro = state.current_macro.value;
+    var params = MacroAsUrlQuery(macro);
+	params.append(Keys.Instrument, state.current_instrument.value);
+	const parameter = state.current_parameter.value;
+	params.append(Keys.ValueTarget, parameter.code);
+	params.append(Keys.ValueTargetAmount, parameter.value.toString());
+
+    url.search = params.toString();
+    const strUrl = url.toString();
+    window.history.replaceState({url: strUrl}, "", strUrl);
+}
+
+function main() {
+	state.script.subscribe(updateUrl);
+	state.current_instrument.subscribe(updateUrl);
+	render(<App />, document.getElementById("app")!);
+}
+
 try {
 	navigator.requestMIDIAccess()
 		.then(
 			(midiAccess : MIDIAccess) => {
 				state = createState(midiAccess);
 				TryUpdateM8Port();
-				render(<App />, document.getElementById("app")!);
+				main();
 			},
 			_ => {
-				render(<App />, document.getElementById("app")!);
+				main();
 			});
 } catch {
 	document.addEventListener('DOMContentLoaded', function () {
 		// moving on...
-		const app = document.getElementById("app");
-		render(<App />, app!);
+		main();
 	}, false);
 }

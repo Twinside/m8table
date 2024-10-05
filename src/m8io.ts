@@ -1,5 +1,5 @@
+import { never } from "./helper";
 import { Midi } from "./midi";
-import { never } from "./state";
 
 /** Sequencer command */
 export enum M8SequencerCommand {
@@ -188,8 +188,15 @@ export const M8GlobalCommands : { [ix in M8GlobalCommand]: M8Command } = {
 	SRV: { ty: "GLO", code: M8GlobalCommand.SRV, value: 0 },
 } as const;
 
-export type M8Instrument =
-	"WAV" | "FM" | "MA" | "HS" | "SA"
+const m8Instruments = ["WAV", "FM", "MA", "HS", "SA"] as const;
+export type M8Instrument = typeof m8Instruments[number];
+
+
+export function ParseM8Instrument(str: string | null): M8Instrument | undefined {
+	if (str === null) return undefined;
+    const instrName = m8Instruments.find((validName) => validName === str);
+	return instrName ? instrName : undefined;
+}
 
 export const HumanNameOfInstrument : { [ix in M8Instrument]: string } = {
 	"WAV": "Wavsynth",
