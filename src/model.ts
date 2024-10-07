@@ -43,6 +43,24 @@ function* renderAttackDecay(
     parameter: M8Command,
     macro: AttackDecayEnvMacro) : Iterable<M8Command> {
 
+    if (!IsFunctionRelative(parameter)) {
+        yield* renderFreeSegments(parameter, {
+            Segments: [
+                {
+                    Amount: macro.Amount,
+                    TicDuration: macro.AttackTics
+                },
+                {
+                    Amount: -macro.Amount,
+                    TicDuration: macro.DecayTics
+                }
+            ],
+            Loop: macro.Loop
+        });
+
+        return;
+    }
+
     let instructionCount = 0;
 
     if (macro.AttackTics === 0) {
@@ -150,6 +168,27 @@ function* renderTriLfo(parameter: M8Command, macro: LFOEnvMacro) {
     const upDuration = (macro.Duration / 4) | 0;
     const downDuration = (macro.Duration / 2) | 0;
 
+    if (!IsFunctionRelative(parameter)) {
+        yield* renderFreeSegments(parameter, {
+            Segments: [
+                {
+                    Amount: (macro.Amount / 2) | 0,
+                    TicDuration: upDuration
+                },
+                {
+                    Amount: -macro.Amount,
+                    TicDuration: downDuration
+                },
+                {
+                    Amount: (macro.Amount / 2) | 0,
+                    TicDuration: upDuration
+                },
+            ],
+            Loop: macro.Loop
+        });
+
+        return;
+    }
     const slope = (macro.Amount / (macro.Duration / 2)) | 0;
     let instruction_count = 3;
 
@@ -343,29 +382,97 @@ function* renderSawDownLFO(parameter: M8Command, macro: LFOEnvMacro) : Iterable<
 function* renderFreeSegments(parameter: M8Command, macro: FreeFormMacro) : Iterable<M8Command> {
     let instruction_count = 0;
 
-    for (const seg of macro.Segments) {
-        if (seg.TicDuration <= 1) {
-            yield {...parameter, value: seg.Amount < 0 ? signed(seg.Amount) : (seg.Amount | 0) }
-            instruction_count++;
-        } else if (seg.Amount !== 0) {
-            const absValue = seg.Amount < 0
-                ? Math.abs(seg.Amount)
-                : seg.Amount;
+    if (IsFunctionRelative(parameter)) {
+        for (const seg of macro.Segments) {
+            if (seg.TicDuration <= 1) {
+                yield {...parameter, value: seg.Amount < 0 ? signed(seg.Amount) : (seg.Amount | 0) };
+                instruction_count++;
+            } else if (seg.Amount !== 0) {
+                const absValue = seg.Amount < 0
+                    ? Math.abs(seg.Amount)
+                    : seg.Amount;
 
-            const slope = (absValue / seg.TicDuration) | 0;
-            const signedSlope = seg.Amount < 0 ? signed(slope) : slope;
-            yield {...parameter, value: signedSlope}
-            yield M8Builder.REP(seg.TicDuration - 1);
-            instruction_count += 2;
-        } else {
-            yield M8Builder.DEL(seg.TicDuration);
+                const slope = (absValue / seg.TicDuration) | 0;
+                const signedSlope = seg.Amount < 0 ? signed(slope) : slope;
+                yield {...parameter, value: signedSlope}
+                yield M8Builder.REP(seg.TicDuration - 1);
+                instruction_count += 2;
+            } else {
+                yield M8Builder.DEL(seg.TicDuration);
+            }
         }
-    }
 
-    if (macro.Loop) {
-        yield M8Builder.HOP(0);
+        if (macro.Loop) {
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(instruction_count);
+        }
     } else {
-        yield M8Builder.HOP(instruction_count);
+        const fullTick = macro.Segments.reduce((a, seg) => a + (seg.Amount === 0 ? 1 : seg.TicDuration), 0)
+        let accum = parameter.value;
+
+        // full tick, we just write stuff on every step
+        if (fullTick <= 0xF) {
+            for (const seg of macro.Segments) {
+
+                if (seg.TicDuration <= 1) {
+                    accum += seg.Amount;
+                    yield {...parameter, value: accum };
+                    instruction_count++;
+                } else if (seg.Amount !== 0) {
+
+                    const slope = (seg.Amount / seg.TicDuration) | 0;
+                    for (let i = 0; i < seg.TicDuration; i++) {
+                        accum += slope;
+                        yield {...parameter, value: accum | 0 }
+                        instruction_count++;
+                    }
+                } else {
+                    yield M8Builder.DEL(seg.TicDuration);
+                    instruction_count++;
+                }
+            }
+
+            if (macro.Loop) {
+                yield M8Builder.HOP(0);
+            } else {
+                yield M8Builder.HOP(instruction_count);
+            }
+
+        } else {
+            for (const seg of macro.Segments) {
+                if (instruction_count >= 0xD) break;
+
+                const steps = (seg.TicDuration * 7 / fullTick) | 0;
+                if (steps <= 1) {
+                    accum += seg.Amount;
+                    yield {...parameter, value: accum };
+                    instruction_count++;
+
+                    if (seg.TicDuration > 1) {
+                        yield M8Builder.DEL(seg.TicDuration);
+                        instruction_count++;
+                    }
+                } else if (seg.Amount !== 0) {
+                    const slope = (seg.Amount / steps) | 0;
+                    for (let i = 0; i < steps; i++) {
+                        accum += slope;
+                        yield {...parameter, value: accum | 0 };
+                        yield M8Builder.DEL((seg.TicDuration / steps) | 0);
+                        instruction_count += 2;
+                    }
+                } else {
+                    yield M8Builder.DEL(seg.TicDuration);
+                    instruction_count++;
+                }
+            }
+
+            if (macro.Loop) {
+                yield M8Builder.HOP(0);
+            } else {
+                yield M8Builder.HOP(instruction_count);
+            }
+        }
     }
 }
 

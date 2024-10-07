@@ -383,7 +383,7 @@ function sendCurrentScript() {
 }
 
 export function App() {
-	const scriptTooLong = state.script.value.length > 0x0F;
+	const scriptTooLong = state.script.value.length > 0x10;
 	const disabled =
 		state.m8port.value === undefined ||
 		scriptTooLong;
