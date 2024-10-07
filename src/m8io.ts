@@ -31,7 +31,8 @@ export enum M8WaveSynthCommand {
 	SIZ = "SIZ",
 	MUL = "MUL",
 	SCN = "SCN",
-	WRP = "WRP"
+	WRP = "WRP",
+	OSC = "OSC"
 }
 
 /** FM specific comments */
@@ -46,7 +47,8 @@ export enum M8MacroSynthCommand {
 	TBR = "TBR",
 	COL = "COL",
 	DEG = "DEG",
-	RED = "RED"
+	RED = "RED",
+	OSC = "OSC"
 }
 
 export enum M8HyperSynthCommand {
@@ -73,6 +75,7 @@ const M8WaveSynthCommandPositions : { [ix in M8WaveSynthCommand] : Pos & Rel } =
 	MUL: { x: 5, y: 4, relative: true },
 	WRP: { x: 6, y: 4, relative: true },
 	SCN: { x: 7, y: 4, relative: true },
+	OSC: { x: 7, y: 4, relative: false },
 }
 
 const M8FMSynthCommandPositions : { [ix in M8FMSynthCommand] : Pos & Rel } = {
@@ -92,9 +95,9 @@ const M8HyperSynthCommandPositions : { [ix in M8HyperSynthCommand] : Pos & Rel }
 const M8SamplerSynthCommandPositions : { [ix in M8SamplerCommand] : Pos & Rel } = {
 	PLY: { x: 3, y: 4, relative: false },
 	STA: { x: 4, y: 4, relative: false },
-	LOP: { x: 5, y: 4, relative: false },
-	LEN: { x: 6, y: 4, relative: false },
-	DEG: { x: 7, y: 4, relative: false },
+	LOP: { x: 5, y: 4, relative: true },
+	LEN: { x: 6, y: 4, relative: true },
+	DEG: { x: 7, y: 4, relative: true },
 	SLI: { x: 6, y: 5, relative: false },
 };
 
@@ -103,6 +106,7 @@ const M8MacroSynthCommandPositions : { [ix in M8MacroSynthCommand] : Pos & Rel }
 	COL: { x: 5, y: 4, relative: true },
 	DEG: { x: 6, y: 4, relative: true },
 	RED: { x: 7, y: 4, relative: true },
+	OSC: { x: 7, y: 4, relative: false },
 };
 
 const M8SequencerCommandPositions : { [ix in M8SequencerCommand] : Pos & Rel} = {
@@ -133,6 +137,7 @@ export const M8WaveSynthCommands : { [ix in M8WaveSynthCommand] : M8Command } = 
 	MUL: { ty: "WAV", code: M8WaveSynthCommand.MUL, value: 0 },
 	WRP: { ty: "WAV", code: M8WaveSynthCommand.WRP, value: 0 },
 	SCN: { ty: "WAV", code: M8WaveSynthCommand.SCN, value: 0 },
+	OSC: { ty: "WAV", code: M8WaveSynthCommand.OSC, value: 0 },
 } as const;
 
 export const M8FMSynthCommands : { [ix in M8FMSynthCommand] : M8Command } = {
@@ -163,6 +168,7 @@ export const M8MacroSynthCommands : { [ix in M8MacroSynthCommand] : M8Command } 
 	COL: { ty: "MA", code: M8MacroSynthCommand.COL, value: 0 },
 	DEG: { ty: "MA", code: M8MacroSynthCommand.DEG, value: 0 },
 	RED: { ty: "MA", code: M8MacroSynthCommand.RED, value: 0 },
+	OSC: { ty: "MA", code: M8MacroSynthCommand.OSC, value: 0 },
 } as const;
 
 export const M8SequencerCommands : { [ix in M8SequencerCommand] : M8Command } = {
