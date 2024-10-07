@@ -308,7 +308,6 @@ export function Plot(ctx: CanvasRenderingContext2D, baseValue: number, commands:
 					current_tick++;
 				}
 				break;
-				break;
 
 			case M8SequencerCommand.HOP:
 				if (cmd.value === current_instruction)
@@ -320,14 +319,21 @@ export function Plot(ctx: CanvasRenderingContext2D, baseValue: number, commands:
 				break;
 
 			default:
-				const signed = cmd.value > 0x80
-					? -((~cmd.value + 1) & 0xFF)
-					: cmd.value;
+				const isRelative = IsFunctionRelative(cmd);
+				if (isRelative) {
+					const signed = cmd.value > 0x80
+						? -((~cmd.value + 1) & 0xFF)
+						: cmd.value;
 
-				value = signed + value;
+					value = signed + value;
+					prevValue = signed;
+				} else {
+					value = cmd.value;
+					prevValue = value;
+				}
+
 				value = Math.min(255, Math.max(0, value));
 				render(value);
-				prevValue = signed;
 				current_tick++;
 				break;
 		}

@@ -1,5 +1,5 @@
 import { never } from "./helper";
-import { M8Builder, M8Command } from "./m8io";
+import { IsFunctionRelative, M8Builder, M8Command } from "./m8io";
 
 /** Main definition of what we're trying to represent */
 export type Segment =
@@ -183,72 +183,161 @@ function* renderSquareLfo(parameter: M8Command, macro: LFOEnvMacro) {
 
     let instruction_count = 1;
 
-    yield {...parameter, value: (macro.Amount / 2) | 0};
-    if (phaseLength > 1) {
-        yield M8Builder.DEL(phaseLength - 1);
-        instruction_count++;
-    }
+    if (IsFunctionRelative(parameter)) {
+        yield {...parameter, value: (macro.Amount / 2) | 0};
+        if (phaseLength > 1) {
+            yield M8Builder.DEL(phaseLength - 1);
+            instruction_count++;
+        }
 
-    instruction_count++;
-    yield {...parameter, value: signed(macro.Amount)};
-    if (phaseLength > 1) {
         instruction_count++;
-        yield M8Builder.DEL(phaseLength - 1);
-    }
+        yield {...parameter, value: signed(macro.Amount)};
+        if (phaseLength > 1) {
+            instruction_count++;
+            yield M8Builder.DEL(phaseLength - 1);
+        }
 
-    instruction_count++;
-    yield {...parameter, value: macro.Amount};
-    if (phaseLength > 1) {
         instruction_count++;
-        yield M8Builder.DEL(phaseLength - 1);
-    }
+        yield {...parameter, value: macro.Amount};
+        if (phaseLength > 1) {
+            instruction_count++;
+            yield M8Builder.DEL(phaseLength - 1);
+        }
 
-    if (macro.Loop) {
-        yield M8Builder.HOP(phaseLength > 1 ? 2 : 1);
+        if (macro.Loop) {
+            yield M8Builder.HOP(phaseLength > 1 ? 2 : 1);
+        } else {
+            yield M8Builder.HOP(instruction_count);
+        }
     } else {
-        yield M8Builder.HOP(instruction_count);
+        const base = parameter.value;
+        yield {...parameter, value: Math.min(255, (base + macro.Amount / 2) | 0)};
+        if (phaseLength > 1) {
+            yield M8Builder.DEL(phaseLength - 1);
+            instruction_count++;
+        }
+
+        instruction_count++;
+        yield {...parameter, value: Math.max(0, (base - macro.Amount / 2) | 0)};
+        if (phaseLength > 1) {
+            instruction_count++;
+            yield M8Builder.DEL(phaseLength - 1);
+        }
+
+        if (macro.Loop) {
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(instruction_count);
+        }
     }
 }
 
 function* renderSawUpLFO(parameter: M8Command, macro: LFOEnvMacro) : Iterable<M8Command> {
     let instruction_count = 2;
 
-    const slope = (macro.Amount / macro.Duration) | 0;
+    if (IsFunctionRelative(parameter)) {
+        const slope = (macro.Amount / macro.Duration) | 0;
 
-    yield {...parameter, value: slope }
+        yield {...parameter, value: slope }
 
-    if (macro.Duration > 1) {
-        yield M8Builder.REP(macro.Duration);
-        instruction_count++;
-    }
+        if (macro.Duration > 1) {
+            yield M8Builder.REP(macro.Duration);
+            instruction_count++;
+        }
 
-    if (macro.Loop) {
-        // LFO reset
-        yield {...parameter, value: signed(macro.Amount) };
-        yield M8Builder.HOP(0);
+        if (macro.Loop) {
+            // LFO reset
+            yield {...parameter, value: signed(macro.Amount) };
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(instruction_count);
+        }
+    } else if (macro.Duration <= 15) {
+        for (let i = 0; i < macro.Duration; i++) {
+            yield {...parameter, value: (parameter.value + macro.Amount * i / macro.Duration) | 0 }
+        }
+
+        if (macro.Loop) {
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(macro.Duration);
+        }
     } else {
-        yield M8Builder.HOP(instruction_count);
+        const segmentCount = 7;
+        const segmentIncrement = macro.Duration / segmentCount;
+        let acc = segmentIncrement;
+        
+        for (let i = 0; i < segmentCount; i++) {
+            yield {...parameter, value: (parameter.value + macro.Amount * i / segmentCount) | 0 }
+            instruction_count++;
+            if ((acc | 0) >= 1) {
+                instruction_count++;
+                yield M8Builder.DEL(acc | 0);
+                acc = acc - (acc | 0);
+            }
+            acc += segmentIncrement;
+        }
+
+        if (macro.Loop) {
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(instruction_count);
+        }
     }
 }
 
 function* renderSawDownLFO(parameter: M8Command, macro: LFOEnvMacro) : Iterable<M8Command> {
     let instruction_count = 2;
 
-    const slope = (macro.Amount / macro.Duration) | 0;
+    if (IsFunctionRelative(parameter)) {
+        const slope = (macro.Amount / macro.Duration) | 0;
 
-    yield {...parameter, value: macro.Amount };
-    yield {...parameter, value: signed(slope) }
+        yield {...parameter, value: macro.Amount };
+        yield {...parameter, value: signed(slope) }
 
-    if (macro.Duration > 1) {
-        yield M8Builder.REP(macro.Duration);
-        instruction_count++;
-    }
+        if (macro.Duration > 1) {
+            yield M8Builder.REP(macro.Duration);
+            instruction_count++;
+        }
 
-    if (macro.Loop) {
-        yield M8Builder.HOP(0);
+        if (macro.Loop) {
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(instruction_count);
+        }
+    } else if (macro.Duration <= 15) {
+        for (let i = macro.Duration - 1; i >= 0; i--) {
+            yield {...parameter, value: (parameter.value + macro.Amount * i / macro.Duration) | 0 }
+        }
+
+        if (macro.Loop) {
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(macro.Duration);
+        }
     } else {
-        yield M8Builder.HOP(instruction_count);
+        const segmentCount = 7;
+        const segmentIncrement = macro.Duration / segmentCount;
+        let acc = segmentIncrement;
+        
+        for (let i = segmentCount - 1; i >= 0; i--) {
+            yield {...parameter, value: (parameter.value + macro.Amount * i / segmentCount) | 0 }
+            instruction_count++;
+            if ((acc | 0) >= 1) {
+                instruction_count++;
+                yield M8Builder.DEL(acc | 0);
+                acc = acc - (acc | 0);
+            }
+            acc += segmentIncrement;
+        }
+
+        if (macro.Loop) {
+            yield M8Builder.HOP(0);
+        } else {
+            yield M8Builder.HOP(instruction_count);
+        }
     }
+
 }
 
 function* renderFreeSegments(parameter: M8Command, macro: FreeFormMacro) : Iterable<M8Command> {
