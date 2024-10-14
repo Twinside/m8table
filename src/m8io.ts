@@ -534,6 +534,15 @@ export class M8Controller {
 		];
 	}
 
+	public sendCCs(out: MIDIOutput, ccn : number, value: number, repeat: number) {
+		// LAAAAAAAAAAAAAAAARGE
+		const timeBetweenMessages = 300;
+		const message = Midi.ControlChange(this.controlChannel, ccn, value);
+		for (let i = 0; i < repeat; i++) {
+			out.send(message, window.performance.now() + i * timeBetweenMessages);
+		}
+	}
+
     public sendCommands(out: MIDIOutput, commands: Iterable<M8Command>) {
         this.sendUserCommands(out, CommandToWriteOrders(commands));
     }
@@ -554,4 +563,28 @@ export class M8Controller {
 			i++;
 		}
 	}
+}
+
+export async function sendSequence(
+	m8Port: MIDIOutput,
+	controlChannel: number,
+	script: M8Command[]) {
+
+	await m8Port.open();
+
+	const m8 = new M8Controller(controlChannel);
+	m8.sendCommands(m8Port, script);
+}
+
+export async function sendCC(
+	m8Port: MIDIOutput,
+	repeat: number,
+	controlChannel: number,
+	ccn: number,
+	ccValue: number) {
+
+	await m8Port.open();
+
+	const m8 = new M8Controller(controlChannel);
+	m8.sendCCs(m8Port, ccn, ccValue, repeat);
 }

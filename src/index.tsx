@@ -1,6 +1,7 @@
 import { never } from "./helper";
 import { CommandsOfInstrument, HumanCommandKindOfCommand, HumanNameOfInstrument, M8Command, M8Instrument, Plot } from "./m8io";
-import { findFirstNamedOutputPort, sendSequence } from "./midi";
+import * as M8IO from "./m8io";
+import { findFirstNamedOutputPort } from "./midi";
 import { AttackDecayEnvMacro, FreshMacro, SegmentKindIndex, LFOEnvMacro, ADSREnvMacro, Segment, FreeFormMacro, MacroAsUrlQuery, Keys } from "./model";
 import { createState } from "./state";
 import "./style.css";
@@ -349,6 +350,12 @@ function MidiStatus() {
 		m8port === undefined ? "No connected M8 found" :
 		"M8 OK, put cursor in an instrument table for writing.";
 
+	const ccSend =
+		m8port === undefined
+			? undefined
+			: <button title="Send CC to the M8 to activate midi mapping"
+					  onClick={_ => sendCC()}>CC</button>;
+
 	const setVal = (str : string) => {
 		const ix = Number.parseInt(str, 10);
 		state.m8Channel.value = ix;
@@ -368,6 +375,7 @@ function MidiStatus() {
 		</label>
 		<span class="separator"></span>
 		<button title="Search for M8" onClick={_ => TryUpdateM8Port()}>⟳ Refresh M8</button>
+		{ccSend}
 	</div>
 }
 
@@ -379,7 +387,18 @@ function sendCurrentScript() {
 		return;
 	}
 
-	sendSequence(port, state.m8Channel.peek(), state.script.peek());
+	M8IO.sendSequence(port, state.m8Channel.peek(), state.script.peek());
+}
+
+function sendCC() {
+	const port = findFirstNamedOutputPort(state.midi, "M8");
+	if (port === undefined) {
+		state.m8port.value = undefined;
+		alert("No M8 found, please connect and refresh")
+		return;
+	}
+
+	M8IO.sendCC(port, 50, state.m8Channel.peek(), 14, 0x40);
 }
 
 export function App() {
