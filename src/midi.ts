@@ -1,5 +1,3 @@
-import { M8Command, M8Controller } from "./m8io";
-
 /** Really light midi message formatter. */
 export class Midi {
 	public static readonly NoteOnCode : number = 0x90;

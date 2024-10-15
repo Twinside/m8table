@@ -457,26 +457,23 @@ function updateUrl() {
     window.history.replaceState({url: strUrl}, "", strUrl);
 }
 
+state = createState(undefined);
 function main() {
 	state.script.subscribe(updateUrl);
 	state.current_instrument.subscribe(updateUrl);
 	render(<App />, document.getElementById("app")!);
 }
+document.addEventListener('DOMContentLoaded', function () {
+	// moving on...
+	main();
+}, false);
 
 try {
 	navigator.requestMIDIAccess()
 		.then(
 			(midiAccess : MIDIAccess) => {
-				state = createState(midiAccess);
+				state.midi = midiAccess;
 				TryUpdateM8Port();
-				main();
-			},
-			_ => {
-				main();
 			});
 } catch {
-	document.addEventListener('DOMContentLoaded', function () {
-		// moving on...
-		main();
-	}, false);
 }
