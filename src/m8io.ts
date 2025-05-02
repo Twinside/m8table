@@ -32,7 +32,8 @@ export enum M8WaveSynthCommand {
 	MUL = "MUL",
 	SCN = "SCN",
 	WRP = "WRP",
-	OSC = "OSC"
+	OSC = "OSC",
+	ERR = "ERR"
 }
 
 /** FM specific comments */
@@ -41,6 +42,7 @@ export enum M8FMSynthCommand {
 	FM2 = "FM2",
 	FM3 = "FM3",
 	FM4 = "FM4",
+	ERR = "ERR"
 }
 
 export enum M8MacroSynthCommand {
@@ -48,14 +50,17 @@ export enum M8MacroSynthCommand {
 	COL = "COL",
 	DEG = "DEG",
 	RED = "RED",
-	OSC = "OSC"
+	OSC = "OSC",
+	ERR = "ERR"
 }
 
 export enum M8HyperSynthCommand {
-	SHF = "SHF",
+	CVO = "CVO",
+	CRD = "CRD",
 	SWM = "SWM",
 	WID = "WID",
-	SUB = "SUB"
+	SUB = "SUB",
+	ERR = "ERR"
 }
 
 export enum M8SamplerCommand {
@@ -64,18 +69,20 @@ export enum M8SamplerCommand {
 	LOP = "LOP",
 	LEN = "LEN",
 	DEG = "DEG",
-	SLI = "SLI"
+	SLI = "SLI",
+	ERR = "ERR"
 }
 
 type Rel = { relative: boolean };
 
 // TODO: check all relatives!
 const M8WaveSynthCommandPositions : { [ix in M8WaveSynthCommand] : Pos & Rel } = {
+	OSC: { x: 3, y: 4, relative: false },
     SIZ: { x: 4, y: 4, relative: true },
 	MUL: { x: 5, y: 4, relative: true },
 	WRP: { x: 6, y: 4, relative: true },
 	SCN: { x: 7, y: 4, relative: true },
-	OSC: { x: 7, y: 4, relative: false },
+	ERR: { x: 7, y: 5, relative: true },
 }
 
 const M8FMSynthCommandPositions : { [ix in M8FMSynthCommand] : Pos & Rel } = {
@@ -83,13 +90,16 @@ const M8FMSynthCommandPositions : { [ix in M8FMSynthCommand] : Pos & Rel } = {
 	FM2: { x: 5, y: 4, relative: true },
 	FM3: { x: 6, y: 4, relative: true },
 	FM4: { x: 7, y: 4, relative: true },
+	ERR: { x: 7, y: 5, relative: true },
 };
 
 const M8HyperSynthCommandPositions : { [ix in M8HyperSynthCommand] : Pos & Rel } = {
-	SHF: { x: 4, y: 4, relative: true },
+	CRD: { x: 3, y: 4, relative: true },
+	CVO: { x: 4, y: 4, relative: true },
 	SWM: { x: 5, y: 4, relative: true },
 	WID: { x: 6, y: 4, relative: true },
 	SUB: { x: 7, y: 4, relative: true },
+	ERR: { x: 7, y: 5, relative: true },
 };
 
 const M8SamplerSynthCommandPositions : { [ix in M8SamplerCommand] : Pos & Rel } = {
@@ -99,6 +109,7 @@ const M8SamplerSynthCommandPositions : { [ix in M8SamplerCommand] : Pos & Rel } 
 	LEN: { x: 6, y: 4, relative: true },
 	DEG: { x: 7, y: 4, relative: true },
 	SLI: { x: 6, y: 5, relative: false },
+	ERR: { x: 7, y: 5, relative: true },
 };
 
 const M8MacroSynthCommandPositions : { [ix in M8MacroSynthCommand] : Pos & Rel } = {
@@ -106,7 +117,8 @@ const M8MacroSynthCommandPositions : { [ix in M8MacroSynthCommand] : Pos & Rel }
 	COL: { x: 5, y: 4, relative: true },
 	DEG: { x: 6, y: 4, relative: true },
 	RED: { x: 7, y: 4, relative: true },
-	OSC: { x: 7, y: 4, relative: false },
+	OSC: { x: 3, y: 4, relative: false },
+	ERR: { x: 7, y: 5, relative: true },
 };
 
 const M8SequencerCommandPositions : { [ix in M8SequencerCommand] : Pos & Rel} = {
@@ -138,6 +150,7 @@ export const M8WaveSynthCommands : { [ix in M8WaveSynthCommand] : M8Command } = 
 	WRP: { ty: "WAV", code: M8WaveSynthCommand.WRP, value: 0 },
 	SCN: { ty: "WAV", code: M8WaveSynthCommand.SCN, value: 0 },
 	OSC: { ty: "WAV", code: M8WaveSynthCommand.OSC, value: 0 },
+	ERR: { ty: "WAV", code: M8WaveSynthCommand.ERR, value: 0 },
 } as const;
 
 export const M8FMSynthCommands : { [ix in M8FMSynthCommand] : M8Command } = {
@@ -145,13 +158,16 @@ export const M8FMSynthCommands : { [ix in M8FMSynthCommand] : M8Command } = {
 	FM2: { ty: "FM", code: M8FMSynthCommand.FM2, value: 0 },
 	FM3: { ty: "FM", code: M8FMSynthCommand.FM3, value: 0 },
 	FM4: { ty: "FM", code: M8FMSynthCommand.FM4, value: 0 },
+	ERR: { ty: "FM", code: M8FMSynthCommand.ERR, value: 0 },
 } as const;
 
 export const M8HyperSynthCommands : { [ix in M8HyperSynthCommand] : M8Command } = {
-	SHF: { ty: "HS", code: M8HyperSynthCommand.SHF, value: 0 },
+	CVO: { ty: "HS", code: M8HyperSynthCommand.CVO, value: 0 },
+	CRD: { ty: "HS", code: M8HyperSynthCommand.CRD, value: 0 },
 	SWM: { ty: "HS", code: M8HyperSynthCommand.SWM, value: 0 },
 	WID: { ty: "HS", code: M8HyperSynthCommand.WID, value: 0 },
 	SUB: { ty: "HS", code: M8HyperSynthCommand.SUB, value: 0 },
+	ERR: { ty: "HS", code: M8HyperSynthCommand.ERR, value: 0 },
 } as const;
 
 export const M8SamplerSynthCommands : { [ix in M8SamplerCommand] : M8Command } = {
@@ -161,6 +177,7 @@ export const M8SamplerSynthCommands : { [ix in M8SamplerCommand] : M8Command } =
 	LEN: { ty: "SA", code: M8SamplerCommand.LEN, value: 0 },
 	DEG: { ty: "SA", code: M8SamplerCommand.DEG, value: 0 },
 	SLI: { ty: "SA", code: M8SamplerCommand.SLI, value: 0 },
+	ERR: { ty: "SA", code: M8SamplerCommand.ERR, value: 0 },
 } as const;
 
 export const M8MacroSynthCommands : { [ix in M8MacroSynthCommand] : M8Command } = {
@@ -169,6 +186,7 @@ export const M8MacroSynthCommands : { [ix in M8MacroSynthCommand] : M8Command } 
 	DEG: { ty: "MA", code: M8MacroSynthCommand.DEG, value: 0 },
 	RED: { ty: "MA", code: M8MacroSynthCommand.RED, value: 0 },
 	OSC: { ty: "MA", code: M8MacroSynthCommand.OSC, value: 0 },
+	ERR: { ty: "MA", code: M8MacroSynthCommand.ERR, value: 0 },
 } as const;
 
 export const M8SequencerCommands : { [ix in M8SequencerCommand] : M8Command } = {
